@@ -29,18 +29,32 @@
 		if (!response.text) return;
 
 		if (response.action?.type === 'navigate') {
-			// Cross-page navigation: carry the reply to the destination
 			voiceReply.set({ message: response.text, intent: response.action.payload.route });
 			await goto(response.action.payload.route);
-		} else {
-			// Same-page reply (e.g. ordered a dish, asked a question)
+		} else if (response.action?.type === 'cart_remove') {
+			removeCartItem(response.action.payload.itemName);
 			voiceReply.set({ message: response.text, intent: null });
-
-			// Sync cart store when agent added an item
-			if (response.agentData) {
-				syncCartItem(response.agentData);
-			}
+		} else {
+			voiceReply.set({ message: response.text, intent: null });
+			if (response.agentData) syncCartItem(response.agentData);
 		}
+	}
+
+	function removeCartItem(itemName: string | null) {
+		const items = $cart.items;
+		if (!items.length) return;
+
+		if (!itemName) {
+			// "刚才那个不要了" → remove the last added item
+			cart.removeItem(items[items.length - 1].id);
+			return;
+		}
+		// Match by name — try exact first, then partial
+		const kw = itemName.toLowerCase();
+		const match =
+			items.find(i => i.name.toLowerCase() === kw) ??
+			items.find(i => i.name.toLowerCase().includes(kw) || kw.includes(i.name.toLowerCase()));
+		if (match) cart.removeItem(match.id);
 	}
 
 	function syncCartItem(data: unknown) {

@@ -29,7 +29,7 @@ Analyze the guest's message and respond with ONLY a raw JSON object — no markd
 
 Response schema:
 {
-  "intent": "order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "other",
+  "intent": "order" | "cancel_order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "other",
   "entities": {
     "dish": string | null,
     "quantity": number | null,
@@ -47,7 +47,27 @@ Response schema:
 Rules:
 - reply must be short (1–2 sentences), friendly, and in the guest's language
 - For order intent with no specific dish: reply should invite the guest to browse the menu, do NOT ask for a dish name
-- Return ONLY the JSON object, nothing else`;
+- Return ONLY the JSON object, nothing else
+
+cancel_order intent guide:
+Use "cancel_order" when the guest wants to remove, cancel, or undo an item from their cart.
+- "取消印尼炒面" / "remove the nasi goreng" → dish: "印尼炒面" / "Nasi Goreng"
+- "刚才那个不要了" / "cancel the last one" / "never mind" → dish: null  (means last item)
+- "把炒面去掉" / "delete the noodles" → dish: "炒面" / "noodles"
+reply: a short confirmation in the guest's language that the item was removed.
+
+specialInstructions extraction guide:
+Capture ANY food preparation preference, dietary request, or customisation the guest mentions.
+Preserve the original language of the instruction. Join multiple instructions with ", ".
+Examples:
+  "少辣"              → "少辣"
+  "不要香菜"          → "不要香菜"
+  "少辣，不要洋葱"   → "少辣，不要洋葱"
+  "extra spicy"       → "extra spicy"
+  "well done, no salt"→ "well done, no salt"
+  "no ice"            → "no ice"
+  "素食"              → "素食"
+  (nothing mentioned) → null`;
 
 export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
 	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
@@ -79,20 +99,34 @@ export async function processConversation(input: ConversationInput): Promise<Con
 
 	// Dispatch to appropriate agent
 	switch (parsed.intent) {
+		case 'cancel_order': {
+			const dish = (parsed.entities.dish as string | null) ?? null;
+			return {
+				reply: parsed.reply,
+				intent: 'cancel_order',
+				data: { itemName: dish }   // null = cancel last item
+			};
+		}
 		case 'order': {
 			// No specific dish → just navigate to the menu; agent only runs when a dish is named
 			if (!parsed.entities.dish) {
 				return { reply: parsed.reply, intent: 'order' };
 			}
+			const si = parsed.entities.specialInstructions;
 			const result = await handleOrderIntent({
 				dish: parsed.entities.dish as string,
 				rawMessage: input.message,
-				quantity: parsed.entities.quantity as number,
-				specialInstructions: parsed.entities.specialInstructions as string,
+				quantity: parsed.entities.quantity as number ?? undefined,
+				specialInstructions: si && si !== 'null' ? String(si) : undefined,
 				roomId: input.roomId,
 				language: input.language
 			});
-			return { reply: result.reply, intent: 'order', data: result.data };
+			// On success: Claude's contextual reply + agent's factual confirmation line
+			// On failure: agent's error reply (Claude's reply may be incorrect at this point)
+			const reply = result.success && result.confirmLine
+				? `${parsed.reply}\n${result.confirmLine}`
+				: (result.reply ?? parsed.reply);
+			return { reply, intent: 'order', data: result.data };
 		}
 		case 'booking_spa': {
 			const result = await handleBookingIntent({

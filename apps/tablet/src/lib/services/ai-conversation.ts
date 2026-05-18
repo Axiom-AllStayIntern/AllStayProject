@@ -5,13 +5,10 @@ import { conversationHistory } from '$lib/stores/conversation.js';
 
 export interface AIResponse {
 	text: string;
-	action: {
-		type: 'navigate';
-		payload: {
-			route: string;
-			params?: Record<string, string>;
-		};
-	} | null;
+	action:
+		| { type: 'navigate';    payload: { route: string; params?: Record<string, string> } }
+		| { type: 'cart_remove'; payload: { itemName: string | null } }
+		| null;
 	confidence: number;
 	/** Raw data returned by an agent (e.g. cart item after an order) */
 	agentData?: unknown;
@@ -70,10 +67,19 @@ export async function processVoiceInput(
 	conversationHistory.addTurn({ role: 'assistant', content: reply });
 
 	// ── 3. Build AIResponse ───────────────────────────────────────────────────
+
+	// Cart removal — handled client-side from the cart store
+	if (intent === 'cancel_order') {
+		const d = data as { itemName: string | null } | null;
+		return {
+			text: reply,
+			action: { type: 'cart_remove', payload: { itemName: d?.itemName ?? null } },
+			confidence: 0.95
+		};
+	}
+
 	const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
 	const targetRoute = intent ? INTENT_ROUTES[intent] : undefined;
-
-	// Navigate only if we aren't already on the target page
 	const shouldNavigate = targetRoute && currentPath !== targetRoute;
 
 	return {

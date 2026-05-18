@@ -11,7 +11,10 @@ export interface OrderIntent {
 
 export interface AgentResult {
 	success: boolean;
-	reply: string;
+	/** Short factual confirmation line — orchestrator prepends Claude's contextual reply to this */
+	confirmLine?: string;
+	/** Standalone reply used only on failure (no Claude reply to prepend) */
+	reply?: string;
 	data?: unknown;
 }
 
@@ -65,17 +68,18 @@ function fmtPrice(n: number) {
 	}).format(n);
 }
 
+// Short factual lines — Claude's contextual reply is prepended by the orchestrator
 const T = {
 	en: {
-		added:    (name: string, qty: number, price: string, notes: string) =>
-			`Added ${name}${notes ? ` (${notes})` : ''} ×${qty} to your cart — ${price}. Would you like anything else?`,
+		confirm:  (name: string, qty: number, price: string, notes: string) =>
+			`✓ ${name}${notes ? ` (${notes})` : ''} ×${qty} added to cart — ${price}.`,
 		notFound: (dish: string) =>
-			`Sorry, I couldn't find "${dish}" on the menu. You can browse and tap any item to add it.`,
+			`Sorry, I couldn't find "${dish}" on the menu. Feel free to browse and tap any item to add it.`,
 		failed:   () => 'Failed to add item to cart. Please try again.'
 	},
 	zh: {
-		added:    (name: string, qty: number, price: string, notes: string) =>
-			`已将${name}${notes ? `（${notes}）` : ''} ×${qty} 加入购物车 — ${price}。还需要其他吗？`,
+		confirm:  (name: string, qty: number, price: string, notes: string) =>
+			`✓ ${name}${notes ? `（${notes}）` : ''} ×${qty} 已加入购物车 — ${price}。`,
 		notFound: (dish: string) =>
 			`抱歉，菜单上没有找到"${dish}"，您可以浏览菜单点击添加。`,
 		failed:   () => '加入购物车失败，请重试。'
@@ -111,14 +115,13 @@ export async function handleOrderIntent(intent: OrderIntent): Promise<AgentResul
 			const itemName = lang === 'zh' ? matched.name.zh : matched.name.en;
 			return {
 				success: true,
-				reply: t.added(itemName, qty, fmtPrice(matched.price * qty), notes),
+				confirmLine: t.confirm(itemName, qty, fmtPrice(matched.price * qty), notes),
 				data: cartResult.data
 			};
 		}
 	}
 
 	// ── 2. MCP unreachable — fall back to static menu ─────────────────────────
-	// Try extracted dish name first, then raw utterance (handles Claude translating ZH→EN)
 	const matched = findInStaticMenu(intent.dish) ?? (intent.rawMessage ? findInStaticMenu(intent.rawMessage) : undefined);
 	if (!matched) {
 		return { success: false, reply: t.notFound(intent.dish) };
@@ -135,7 +138,7 @@ export async function handleOrderIntent(intent: OrderIntent): Promise<AgentResul
 
 	return {
 		success: true,
-		reply: t.added(itemName, qty, fmtPrice(matched.price * qty), notes),
+		confirmLine: t.confirm(itemName, qty, fmtPrice(matched.price * qty), notes),
 		data: cartItem
 	};
 }
