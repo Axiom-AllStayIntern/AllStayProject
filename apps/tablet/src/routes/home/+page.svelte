@@ -1,26 +1,9 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
-	import VoiceButton from '$lib/components/VoiceButton.svelte';
 	import { roomNumber } from '$lib/stores/room.js';
 	import { language } from '$lib/stores/language.js';
 	import { goto } from '$app/navigation';
-	import { addToast } from '$lib/stores/toast.js';
-	import { voiceReply } from '$lib/stores/voice-reply.js';
-	import type { AIResponse } from '$lib/services/ai-conversation.js';
-
-	async function handleVoiceResult(response: AIResponse) {
-		if (!response.text) return;
-
-		if (response.action?.type === 'navigate') {
-			// Set the AI reply in the store — AiBanner will display it on the destination page
-			voiceReply.set({ message: response.text, intent: response.action?.payload.route ?? null });
-			await goto(response.action.payload.route);
-		} else {
-			// No navigation — show as toast (fallback / error / info reply)
-			addToast({ message: response.text, type: response.confidence > 0.5 ? 'info' : 'error', duration: 6000 });
-		}
-	}
 
 	const T = {
 		en: {
@@ -133,7 +116,6 @@
 		</div>
 	</main>
 	<BottomNav />
-	<VoiceButton onResult={handleVoiceResult} />
 </div>
 
 <style>

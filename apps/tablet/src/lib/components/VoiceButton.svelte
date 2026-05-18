@@ -3,6 +3,7 @@
 	import { processVoiceInput, type AIResponse } from '$lib/services/ai-conversation.js';
 
 	export let onResult: (response: AIResponse) => void;
+	export let language: 'en' | 'zh' = 'zh';
 
 	type State = 'idle' | 'listening' | 'processing' | 'speaking';
 	let state: State = 'idle';
@@ -28,7 +29,7 @@
 		state = 'processing';
 		try {
 			const blob = await stopRecording();
-			const response = await processVoiceInput(blob);
+			const response = await processVoiceInput(blob, language);
 			state = 'speaking';
 			onResult(response);
 			setTimeout(() => { state = 'idle'; }, 2000);

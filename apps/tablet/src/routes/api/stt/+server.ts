@@ -9,6 +9,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const formData = await request.formData();
 	const audio = formData.get('audio');
+	const lang = formData.get('language');
 
 	if (!audio || !(audio instanceof File)) throw error(400, 'No audio file provided');
 
@@ -18,7 +19,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const transcription = await openai.audio.transcriptions.create({
 			file: audio,
 			model: 'whisper-1',
-			language: 'zh'
+			language: typeof lang === 'string' ? lang : 'zh'
 		});
 		return json({ text: transcription.text });
 	} catch (err) {

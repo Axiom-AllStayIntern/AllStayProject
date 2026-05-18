@@ -1,13 +1,19 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import Screensaver from '$lib/components/Screensaver.svelte';
+	import AiBanner from '$lib/components/AiBanner.svelte';
+	import VoiceButton from '$lib/components/VoiceButton.svelte';
 	import { idle } from '$lib/stores/idle.js';
+	import { toasts } from '$lib/stores/toast.js';
+	import { voiceReply } from '$lib/stores/voice-reply.js';
+	import { cart } from '$lib/stores/cart.js';
+	import { roomNumber } from '$lib/stores/room.js';
+	import { language } from '$lib/stores/language.js';
 	import { onMount } from 'svelte';
 	import { setupI18n } from '$lib/i18n/index.js';
-	import { toasts } from '$lib/stores/toast.js';
-	import type { Toast } from '$lib/stores/toast.js';
-	import AiBanner from '$lib/components/AiBanner.svelte';
+	import type { AIResponse } from '$lib/services/ai-conversation.js';
 
 	setupI18n();
 
@@ -18,13 +24,54 @@
 		if (!isStandalone) idle.start();
 		return () => idle.stop();
 	});
+
+	async function handleVoiceResult(response: AIResponse) {
+		if (!response.text) return;
+
+		if (response.action?.type === 'navigate') {
+			// Cross-page navigation: carry the reply to the destination
+			voiceReply.set({ message: response.text, intent: response.action.payload.route });
+			await goto(response.action.payload.route);
+		} else {
+			// Same-page reply (e.g. ordered a dish, asked a question)
+			voiceReply.set({ message: response.text, intent: null });
+
+			// Sync cart store when agent added an item
+			if (response.agentData) {
+				syncCartItem(response.agentData);
+			}
+		}
+	}
+
+	function syncCartItem(data: unknown) {
+		// Agent returns whatever the MCP server echoes back.
+		// Best-effort: if it has itemId / name / price we can mirror it locally.
+		const d = data as Record<string, unknown> | null;
+		if (!d) return;
+		const roomId = $roomNumber ?? 'guest';
+		try {
+			cart.addItem(roomId, {
+				source: 'dining',
+				itemId: String(d.item_id ?? d.itemId ?? ''),
+				name: String(d.name ?? d.item_name ?? 'Item'),
+				price: Number(d.price ?? d.unit_price ?? 0),
+				quantity: Number(d.quantity ?? 1),
+				specialInstructions: String(d.special_instructions ?? '')
+			});
+		} catch {
+			// MCP response shape unknown — cart will be refreshed when user opens /cart
+		}
+	}
 </script>
 
 <Screensaver />
 
 <slot />
 
-<AiBanner />
+{#if !isStandalone}
+	<AiBanner />
+	<VoiceButton onResult={handleVoiceResult} language={$language} />
+{/if}
 
 <!-- Toast container -->
 <div class="toast-container" aria-live="polite">
