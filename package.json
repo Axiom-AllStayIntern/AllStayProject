@@ -1,0 +1,23 @@
+{
+  "name": "allstay",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/tablet",
+    "apps/mcp-servers",
+    "apps/mcp-servers/packages/*",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:tablet\" \"npm run dev:mcp\"",
+    "dev:tablet": "npm run dev --workspace=apps/tablet",
+    "dev:mcp": "npm run dev --workspace=apps/mcp-servers",
+    "build": "sh scripts/build.sh",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run check --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.5.0"
+  }
+}

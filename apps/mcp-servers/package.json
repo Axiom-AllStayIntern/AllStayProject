@@ -1,0 +1,16 @@
+{
+  "name": "@allstay/mcp-servers",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=packages/dining\" \"npm run dev --workspace=packages/spa\" \"npm run dev --workspace=packages/restaurant\" \"npm run dev --workspace=packages/transport\"",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.5.0"
+  }
+}

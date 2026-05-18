@@ -1,0 +1,116 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  mcp-dining:
+    build:
+      context: ./apps/mcp-servers
+      dockerfile: Dockerfile
+      args:
+        SERVICE: dining
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PRINTER_IP=${PRINTER_IP}
+      - PRINTER_PORT=${PRINTER_PORT}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  mcp-spa:
+    build:
+      context: ./apps/mcp-servers
+      dockerfile: Dockerfile
+      args:
+        SERVICE: spa
+    ports:
+      - '3002:3002'
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  mcp-restaurant:
+    build:
+      context: ./apps/mcp-servers
+      dockerfile: Dockerfile
+      args:
+        SERVICE: restaurant
+    ports:
+      - '3003:3003'
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  mcp-transport:
+    build:
+      context: ./apps/mcp-servers
+      dockerfile: Dockerfile
+      args:
+        SERVICE: transport
+    ports:
+      - '3004:3004'
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  tablet:
+    build:
+      context: ./apps/tablet
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AI_MODEL=${AI_MODEL}
+      - MCP_DINING_URL=http://mcp-dining:3001
+      - MCP_SPA_URL=http://mcp-spa:3002
+      - MCP_RESTAURANT_URL=http://mcp-restaurant:3003
+      - MCP_TRANSPORT_URL=http://mcp-transport:3004
+      - SESSION_SECRET=${SESSION_SECRET}
+    depends_on:
+      - mcp-dining
+      - mcp-spa
+      - mcp-restaurant
+      - mcp-transport
+    restart: unless-stopped
+
+volumes:
+  redis_data:
