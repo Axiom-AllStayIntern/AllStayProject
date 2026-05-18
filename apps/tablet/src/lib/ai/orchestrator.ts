@@ -1,9 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { env } from '$env/dynamic/private';
 import { handleOrderIntent } from './agents/order-agent.js';
 import { handleBookingIntent } from './agents/booking-agent.js';
 import { handleInfoIntent } from './agents/info-agent.js';
-
-const client = new Anthropic();
 
 export interface ConversationInput {
 	message: string;
@@ -40,6 +39,7 @@ Analyze the guest's message and respond with a JSON object:
 Always respond in the same language as the guest. Be warm, professional, and concise.`;
 
 export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
+	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 	const messages: Anthropic.MessageParam[] = [
 		...(input.history ?? []).map((m) => ({
 			role: m.role as 'user' | 'assistant',
@@ -49,7 +49,7 @@ export async function processConversation(input: ConversationInput): Promise<Con
 	];
 
 	const response = await client.messages.create({
-		model: process.env.AI_MODEL ?? 'claude-sonnet-4-6',
+		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
 		max_tokens: 1024,
 		system: SYSTEM_PROMPT,
 		messages

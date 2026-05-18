@@ -1,9 +1,21 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
+	import VoiceButton from '$lib/components/VoiceButton.svelte';
 	import { roomNumber } from '$lib/stores/room.js';
 	import { language } from '$lib/stores/language.js';
 	import { goto } from '$app/navigation';
+	import { addToast } from '$lib/stores/toast.js';
+	import type { AIResponse } from '$lib/services/ai-conversation.js';
+
+	async function handleVoiceResult(response: AIResponse) {
+		if (response.text) {
+			addToast({ message: response.text, type: response.action ? 'info' : 'error', duration: 5000 });
+		}
+		if (response.action?.type === 'navigate') {
+			await goto(response.action.payload.route);
+		}
+	}
 
 	const T = {
 		en: {
@@ -116,6 +128,7 @@
 		</div>
 	</main>
 	<BottomNav />
+	<VoiceButton onResult={handleVoiceResult} />
 </div>
 
 <style>

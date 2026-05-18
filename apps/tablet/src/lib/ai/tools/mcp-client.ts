@@ -1,11 +1,15 @@
 export type McpServerName = 'dining' | 'spa' | 'restaurant' | 'transport';
 
-const SERVER_URLS: Record<McpServerName, string> = {
-	dining: process.env.MCP_DINING_URL ?? 'http://localhost:3001',
-	spa: process.env.MCP_SPA_URL ?? 'http://localhost:3002',
-	restaurant: process.env.MCP_RESTAURANT_URL ?? 'http://localhost:3003',
-	transport: process.env.MCP_TRANSPORT_URL ?? 'http://localhost:3004'
-};
+import { env } from '$env/dynamic/private';
+
+function getServerUrls(): Record<McpServerName, string> {
+	return {
+		dining: env.MCP_DINING_URL ?? 'http://localhost:3001',
+		spa: env.MCP_SPA_URL ?? 'http://localhost:3002',
+		restaurant: env.MCP_RESTAURANT_URL ?? 'http://localhost:3003',
+		transport: env.MCP_TRANSPORT_URL ?? 'http://localhost:3004'
+	};
+}
 
 export interface McpToolCall {
 	server: McpServerName;
@@ -20,7 +24,7 @@ export interface McpToolResult {
 }
 
 export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
-	const url = `${SERVER_URLS[call.server]}/api/mcp`;
+	const url = `${getServerUrls()[call.server]}/api/mcp`;
 	const body = {
 		jsonrpc: '2.0',
 		id: crypto.randomUUID(),
@@ -31,11 +35,16 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 		}
 	};
 
-	const res = await fetch(url, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(body)
-	});
+	let res: Response;
+	try {
+		res = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+	} catch {
+		return { success: false, error: `MCP server unreachable: ${call.server}` };
+	}
 
 	if (!res.ok) {
 		return { success: false, error: `HTTP ${res.status}` };

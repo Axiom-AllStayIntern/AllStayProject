@@ -10,12 +10,16 @@ export const POST: RequestHandler = async ({ request }) => {
 		throw error(400, 'message and roomId are required');
 	}
 
-	const result = await processConversation({
-		message,
-		roomId,
-		language: language ?? 'en',
-		history: history ?? []
-	});
-
-	return json(result);
+	try {
+		const result = await processConversation({
+			message,
+			roomId,
+			language: language ?? 'en',
+			history: history ?? []
+		});
+		return json(result);
+	} catch (err) {
+		const detail = err instanceof Error ? err.message : 'AI service error';
+		throw error(500, detail);
+	}
 };
