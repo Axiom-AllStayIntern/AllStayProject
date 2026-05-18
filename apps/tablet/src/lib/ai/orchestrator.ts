@@ -25,18 +25,29 @@ You help guests with:
 4. Transport arrangements
 5. General hotel information
 
-Analyze the guest's message and respond with a JSON object:
+Analyze the guest's message and respond with ONLY a raw JSON object — no markdown, no code fences, no explanation outside the JSON.
+
+Response schema:
 {
   "intent": "order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "other",
   "entities": {
-    // For order: dish, quantity, specialInstructions
-    // For booking: serviceId, date, time, partySize, notes
-    // For info: query
+    "dish": string | null,
+    "quantity": number | null,
+    "specialInstructions": string | null,
+    "serviceId": string | null,
+    "date": string | null,
+    "time": string | null,
+    "partySize": number | null,
+    "notes": string | null,
+    "query": string | null
   },
-  "reply": "Your conversational response to the guest"
+  "reply": "Your warm, concise conversational response in the same language as the guest"
 }
 
-Always respond in the same language as the guest. Be warm, professional, and concise.`;
+Rules:
+- reply must be short (1–2 sentences), friendly, and in the guest's language
+- For order intent with no specific dish: reply should invite the guest to browse the menu, do NOT ask for a dish name
+- Return ONLY the JSON object, nothing else`;
 
 export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
 	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
@@ -55,18 +66,24 @@ export async function processConversation(input: ConversationInput): Promise<Con
 		messages
 	});
 
-	const text = response.content[0].type === 'text' ? response.content[0].text : '';
+	const raw = response.content[0].type === 'text' ? response.content[0].text : '';
+	// Strip markdown code fences Claude occasionally adds despite instructions
+	const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
 	let parsed: { intent: string; entities: Record<string, unknown>; reply: string };
 	try {
 		parsed = JSON.parse(text);
 	} catch {
-		return { reply: text };
+		return { reply: raw };
 	}
 
 	// Dispatch to appropriate agent
 	switch (parsed.intent) {
 		case 'order': {
+			// No specific dish → just navigate to the menu; agent only runs when a dish is named
+			if (!parsed.entities.dish) {
+				return { reply: parsed.reply, intent: 'order' };
+			}
 			const result = await handleOrderIntent({
 				dish: parsed.entities.dish as string,
 				quantity: parsed.entities.quantity as number,

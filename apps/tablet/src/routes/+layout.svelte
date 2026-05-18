@@ -7,6 +7,7 @@
 	import { setupI18n } from '$lib/i18n/index.js';
 	import { toasts } from '$lib/stores/toast.js';
 	import type { Toast } from '$lib/stores/toast.js';
+	import AiBanner from '$lib/components/AiBanner.svelte';
 
 	setupI18n();
 
@@ -22,6 +23,8 @@
 <Screensaver />
 
 <slot />
+
+<AiBanner />
 
 <!-- Toast container -->
 <div class="toast-container" aria-live="polite">
