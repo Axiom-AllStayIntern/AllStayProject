@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { startRecording, stopRecording, isRecording } from '$lib/utils/recorder.js';
 	import { processVoiceInput, type AIResponse } from '$lib/services/ai-conversation.js';
+	import { speakText, stopSpeaking } from '$lib/utils/tts.js';
 
 	export let onResult: (response: AIResponse) => void;
 	export let language: 'en' | 'zh' = 'zh';
@@ -20,6 +21,10 @@
 			}
 		} else if (state === 'listening') {
 			await handleStop();
+		} else if (state === 'speaking') {
+			// Tap while speaking → interrupt TTS and go back to idle
+			stopSpeaking();
+			state = 'idle';
 		}
 	}
 
@@ -32,7 +37,9 @@
 			const response = await processVoiceInput(blob, language);
 			state = 'speaking';
 			onResult(response);
-			setTimeout(() => { state = 'idle'; }, 2000);
+			// Play the reply — button stays green until audio finishes
+			await speakText(response.text);
+			state = 'idle';
 		} catch (err) {
 			dispatch('error', err instanceof Error ? err.message : 'Voice processing failed');
 			state = 'idle';
@@ -59,7 +66,7 @@
 	class:processing={state === 'processing'}
 	class:speaking={state === 'speaking'}
 	on:click={handleClick}
-	disabled={state === 'processing' || state === 'speaking'}
+	disabled={state === 'processing'}
 	aria-label={label}
 	title={label}
 >

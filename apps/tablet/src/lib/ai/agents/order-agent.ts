@@ -2,9 +2,11 @@ import { callMcpTool } from '../tools/mcp-client.js';
 
 export interface OrderIntent {
 	dish?: string;
+	rawMessage?: string;    // original user utterance — used as fallback search term
 	quantity?: number;
 	specialInstructions?: string;
 	roomId: string;
+	language?: 'en' | 'zh';
 }
 
 export interface AgentResult {
@@ -15,22 +17,46 @@ export interface AgentResult {
 
 // Mirrors the static MENU in dining/+page.svelte — used when MCP is unreachable
 const STATIC_MENU = [
-	{ id: 'nasi',  name: { en: 'Nasi Goreng',           zh: '印尼炒饭' },     price: 85000 },
-	{ id: 'mie',   name: { en: 'Mie Goreng',            zh: '印尼炒面' },     price: 75000 },
-	{ id: 'club',  name: { en: 'Club Sandwich',         zh: '俱乐部三明治' }, price: 95000 },
-	{ id: 'pkx',   name: { en: 'Pancake Stack',         zh: '松饼塔' },      price: 65000 },
-	{ id: 'fruit', name: { en: 'Tropical Fruit Platter', zh: '热带水果拼盘' }, price: 55000 },
-	{ id: 'coco',  name: { en: 'Fresh Coconut Water',   zh: '鲜椰青' },      price: 35000 },
+	{ id: 'nasi',  name: { en: 'Nasi Goreng',            zh: '印尼炒饭' },
+	  aliases: ['fried rice', 'nasi', '炒饭', '炒米饭', 'indonesian rice'],                  price: 85000 },
+	{ id: 'mie',   name: { en: 'Mie Goreng',             zh: '印尼炒面' },
+	  aliases: ['fried noodle', 'mie', 'mee', '炒面', '炒麵', '面条', 'noodle'],            price: 75000 },
+	{ id: 'club',  name: { en: 'Club Sandwich',          zh: '俱乐部三明治' },
+	  aliases: ['sandwich', 'club', '三明治', '俱乐部', '俱樂部'],                           price: 95000 },
+	{ id: 'pkx',   name: { en: 'Pancake Stack',          zh: '松饼塔' },
+	  aliases: ['pancake', '松饼', '煎饼', '薄饼', 'waffle'],                                price: 65000 },
+	{ id: 'fruit', name: { en: 'Tropical Fruit Platter', zh: '热带水果拼盘' },
+	  aliases: ['fruit', 'platter', '水果', '拼盘', '热带水果', 'tropical'],                price: 55000 },
+	{ id: 'coco',  name: { en: 'Fresh Coconut Water',    zh: '鲜椰青' },
+	  aliases: ['coconut', 'coconut water', '椰子', '椰青', '椰子水', '鲜椰'],              price: 35000 },
 ];
 
-function findInStaticMenu(keyword: string) {
-	const kw = keyword.toLowerCase();
-	return STATIC_MENU.find(
-		(item) =>
-			item.name.en.toLowerCase().includes(kw) ||
-			item.name.zh.includes(keyword) ||
-			item.id.toLowerCase().includes(kw)
-	);
+type MenuItem = typeof STATIC_MENU[number];
+
+function findInStaticMenu(keyword: string): MenuItem | undefined {
+	if (!keyword?.trim()) return undefined;
+	const kw = keyword.toLowerCase().trim();
+
+	// Collect all searchable strings for each item, then score by match quality
+	const score = (item: MenuItem): number => {
+		const targets = [
+			item.name.en.toLowerCase(),
+			item.name.zh,
+			item.id,
+			...item.aliases.map(a => a.toLowerCase())
+		];
+		// Exact match → highest score
+		if (targets.some(t => t === kw || t === keyword)) return 3;
+		// One contains the other → high score
+		if (targets.some(t => t.includes(kw) || kw.includes(t))) return 2;
+		// Partial Chinese character overlap
+		if ([...keyword].some(ch => /[一-鿿]/.test(ch) && item.name.zh.includes(ch))) return 1;
+		return 0;
+	};
+
+	return STATIC_MENU.map(item => ({ item, s: score(item) }))
+		.filter(({ s }) => s > 0)
+		.sort((a, b) => b.s - a.s)[0]?.item;
 }
 
 function fmtPrice(n: number) {
@@ -39,11 +65,30 @@ function fmtPrice(n: number) {
 	}).format(n);
 }
 
+const T = {
+	en: {
+		added:    (name: string, qty: number, price: string, notes: string) =>
+			`Added ${name}${notes ? ` (${notes})` : ''} ×${qty} to your cart — ${price}. Would you like anything else?`,
+		notFound: (dish: string) =>
+			`Sorry, I couldn't find "${dish}" on the menu. You can browse and tap any item to add it.`,
+		failed:   () => 'Failed to add item to cart. Please try again.'
+	},
+	zh: {
+		added:    (name: string, qty: number, price: string, notes: string) =>
+			`已将${name}${notes ? `（${notes}）` : ''} ×${qty} 加入购物车 — ${price}。还需要其他吗？`,
+		notFound: (dish: string) =>
+			`抱歉，菜单上没有找到"${dish}"，您可以浏览菜单点击添加。`,
+		failed:   () => '加入购物车失败，请重试。'
+	}
+} as const;
+
 export async function handleOrderIntent(intent: OrderIntent): Promise<AgentResult> {
 	if (!intent.dish) {
 		return { success: false, reply: 'I could not identify the dish. Could you clarify?' };
 	}
 
+	const lang = intent.language ?? 'en';
+	const t = T[lang];
 	const qty = intent.quantity ?? 1;
 	const notes = intent.specialInstructions ?? '';
 
@@ -63,28 +108,26 @@ export async function handleOrderIntent(intent: OrderIntent): Promise<AgentResul
 				tool: 'add_to_cart',
 				params: { room_id: intent.roomId, item_id: matched.id, quantity: qty, special_instructions: notes }
 			});
-			const label = notes ? ` (${notes})` : '';
+			const itemName = lang === 'zh' ? matched.name.zh : matched.name.en;
 			return {
 				success: true,
-				reply: `Added ${matched.name.en}${label} to your cart — ${fmtPrice(matched.price)}. Would you like anything else?`,
+				reply: t.added(itemName, qty, fmtPrice(matched.price * qty), notes),
 				data: cartResult.data
 			};
 		}
 	}
 
 	// ── 2. MCP unreachable — fall back to static menu ─────────────────────────
-	const matched = findInStaticMenu(intent.dish);
+	// Try extracted dish name first, then raw utterance (handles Claude translating ZH→EN)
+	const matched = findInStaticMenu(intent.dish) ?? (intent.rawMessage ? findInStaticMenu(intent.rawMessage) : undefined);
 	if (!matched) {
-		return {
-			success: false,
-			reply: `Sorry, I couldn't find "${intent.dish}" on the menu. You can browse and tap any item to add it.`
-		};
+		return { success: false, reply: t.notFound(intent.dish) };
 	}
 
-	const label = notes ? ` (${notes})` : '';
+	const itemName = lang === 'zh' ? matched.name.zh : matched.name.en;
 	const cartItem = {
 		item_id: matched.id,
-		name: matched.name.en,
+		name: itemName,
 		price: matched.price,
 		quantity: qty,
 		special_instructions: notes
@@ -92,7 +135,7 @@ export async function handleOrderIntent(intent: OrderIntent): Promise<AgentResul
 
 	return {
 		success: true,
-		reply: `Added ${matched.name.en}${label} ×${qty} to your cart — ${fmtPrice(matched.price * qty)}. Would you like anything else?`,
+		reply: t.added(itemName, qty, fmtPrice(matched.price * qty), notes),
 		data: cartItem
 	};
 }

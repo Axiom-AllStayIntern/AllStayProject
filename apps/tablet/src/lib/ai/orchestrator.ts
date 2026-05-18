@@ -86,9 +86,11 @@ export async function processConversation(input: ConversationInput): Promise<Con
 			}
 			const result = await handleOrderIntent({
 				dish: parsed.entities.dish as string,
+				rawMessage: input.message,
 				quantity: parsed.entities.quantity as number,
 				specialInstructions: parsed.entities.specialInstructions as string,
-				roomId: input.roomId
+				roomId: input.roomId,
+				language: input.language
 			});
 			return { reply: result.reply, intent: 'order', data: result.data };
 		}

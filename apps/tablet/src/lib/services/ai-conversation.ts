@@ -1,5 +1,6 @@
 import { get } from 'svelte/store';
 import { roomNumber } from '$lib/stores/room.js';
+import { language as languageStore } from '$lib/stores/language.js';
 import { conversationHistory } from '$lib/stores/conversation.js';
 
 export interface AIResponse {
@@ -25,19 +26,25 @@ const INTENT_ROUTES: Record<string, string> = {
 
 export async function processVoiceInput(
 	audioBlob: Blob,
-	language: 'en' | 'zh' = 'zh'
+	_hint: 'en' | 'zh' = 'zh'  // kept for API compat, actual lang comes from Whisper detection
 ): Promise<AIResponse> {
-	// ── 1. Speech-to-text ────────────────────────────────────────────────────
+	// ── 1. Speech-to-text (Whisper auto-detects language) ────────────────────
 	const formData = new FormData();
 	formData.append('audio', audioBlob, 'recording.webm');
-	formData.append('language', language);
 
 	const sttRes = await fetch('/api/stt', { method: 'POST', body: formData });
 	if (!sttRes.ok) {
 		const err = await sttRes.json().catch(() => ({}));
 		throw new Error((err as { message?: string }).message ?? 'Speech recognition failed');
 	}
-	const { text: userText } = (await sttRes.json()) as { text: string };
+	const { text: userText, detected } = (await sttRes.json()) as { text: string; detected: 'en' | 'zh' };
+
+	// Auto-switch UI language to match what the user spoke
+	const currentLang = get(languageStore);
+	if (detected !== currentLang) {
+		languageStore.set(detected);
+	}
+	const language = detected;
 
 	// Append user turn to history BEFORE calling conversation
 	conversationHistory.addTurn({ role: 'user', content: userText });
