@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import Screensaver from '$lib/components/Screensaver.svelte';
 	import AiBanner from '$lib/components/AiBanner.svelte';
-	import VoiceButton from '$lib/components/VoiceButton.svelte';
+	import VoiceAssistant from '$lib/components/VoiceAssistant.svelte';
 	import { idle } from '$lib/stores/idle.js';
 	import { toasts } from '$lib/stores/toast.js';
 	import { voiceReply } from '$lib/stores/voice-reply.js';
@@ -84,7 +84,7 @@
 
 {#if !isStandalone}
 	<AiBanner />
-	<VoiceButton onResult={handleVoiceResult} language={$language} />
+	<VoiceAssistant onResult={handleVoiceResult} />
 {/if}
 
 <!-- Toast container -->
