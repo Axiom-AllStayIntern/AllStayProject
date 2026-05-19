@@ -228,6 +228,7 @@
 
 	// ── Manual button tap ──────────────────────────────────────────────────────
 	function handleButtonClick() {
+		if (longPressed) { longPressed = false; return; }  // swallow click after long-press
 		if (state === 'idle') {
 			wakeDetector.stop();
 			startSession();
@@ -238,6 +239,28 @@
 			startListening(true);
 		}
 		// processing: ignore taps
+	}
+
+	// ── Long-press to close session ────────────────────────────────────────────
+	const LONG_PRESS_MS = 600;
+	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+	let longPressing = false;
+	let longPressed  = false;   // blocks the subsequent click event
+
+	function handlePointerDown(e: PointerEvent) {
+		if (state === 'idle' || state === 'processing') return;
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		longPressing = true;
+		longPressTimer = setTimeout(() => {
+			longPressing = false;
+			longPressed  = true;
+			goIdle();
+		}, LONG_PRESS_MS);
+	}
+
+	function handlePointerUp() {
+		if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+		longPressing = false;
 	}
 
 	// ── Derived ────────────────────────────────────────────────────────────────
@@ -270,16 +293,29 @@
 	{/if}
 
 	<!-- ── Voice button ──────────────────────────────────────────────────── -->
-	<button
-		class="voice-btn"
-		class:listening={state === 'listening'}
-		class:processing={state === 'processing'}
-		class:speaking={state === 'speaking'}
-		on:click={handleButtonClick}
-		disabled={state === 'processing'}
-		aria-label={ariaLabel}
-		title={ariaLabel}
-	>
+	<div class="voice-btn-wrap">
+		{#if longPressing}
+			<svg class="hold-ring" viewBox="0 0 64 64" aria-hidden="true">
+				<circle cx="32" cy="32" r="30"
+					stroke="#ef5350" stroke-width="3" fill="none"
+					stroke-dasharray="188.5" stroke-dashoffset="188.5"
+					style="animation-duration:{LONG_PRESS_MS}ms"
+				/>
+			</svg>
+		{/if}
+		<button
+			class="voice-btn"
+			class:listening={state === 'listening'}
+			class:processing={state === 'processing'}
+			class:speaking={state === 'speaking'}
+			on:click={handleButtonClick}
+			on:pointerdown={handlePointerDown}
+			on:pointerup={handlePointerUp}
+			on:pointercancel={handlePointerUp}
+			disabled={state === 'processing'}
+			aria-label={ariaLabel}
+			title={ariaLabel}
+		>
 		{#if state === 'processing'}
 			<span class="spinner" aria-hidden="true"></span>
 		{:else if state === 'speaking'}
@@ -305,7 +341,8 @@
 				<line x1="9"  y1="23" x2="15" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 			</svg>
 		{/if}
-	</button>
+		</button>
+	</div>
 </div>
 
 <style>
@@ -368,10 +405,34 @@
 		align-self: flex-start;
 	}
 
-	/* ── Voice button ────────────────────────────────────────────────────────── */
-	.voice-btn {
+	/* ── Voice button wrapper + hold ring ───────────────────────────────────── */
+	.voice-btn-wrap {
+		position: relative;
 		width: 56px;
 		height: 56px;
+	}
+
+	.hold-ring {
+		position: absolute;
+		inset: -4px;
+		width: calc(100% + 8px);
+		height: calc(100% + 8px);
+		pointer-events: none;
+		transform: rotate(-90deg);
+	}
+
+	.hold-ring circle {
+		animation: holdStroke linear forwards;
+	}
+
+	@keyframes holdStroke {
+		to { stroke-dashoffset: 0; }
+	}
+
+	/* ── Voice button ────────────────────────────────────────────────────────── */
+	.voice-btn {
+		width: 100%;
+		height: 100%;
 		border-radius: 50%;
 		border: none;
 		cursor: pointer;
