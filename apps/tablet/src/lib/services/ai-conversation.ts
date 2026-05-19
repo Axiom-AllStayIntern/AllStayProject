@@ -8,6 +8,7 @@ export interface AIResponse {
 	action:
 		| { type: 'navigate';    payload: { route: string; params?: Record<string, string> } }
 		| { type: 'cart_remove'; payload: { itemName: string | null } }
+		| { type: 'close_session' }
 		| null;
 	confidence: number;
 	/** Raw data returned by an agent (e.g. cart item after an order) */
@@ -67,6 +68,10 @@ export async function processVoiceInput(
 	conversationHistory.addTurn({ role: 'assistant', content: reply });
 
 	// ── 3. Build AIResponse ───────────────────────────────────────────────────
+
+	if (intent === 'close_conversation') {
+		return { text: reply, action: { type: 'close_session' }, confidence: 0.95 };
+	}
 
 	// Cart removal — handled client-side from the cart store
 	if (intent === 'cancel_order') {

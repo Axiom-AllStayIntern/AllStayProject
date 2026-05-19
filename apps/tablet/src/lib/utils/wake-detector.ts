@@ -1,32 +1,52 @@
-// Phrases that should trigger the wake word, covering accent variations.
-const WAKE_VARIANTS = [
-	'hi sirui',    'hey sirui',   'hi si rui',   'hi siruey',
-	'hi sir we',   'hi surui',    'hi xirui',    'hi cirui',
-	'hi suirui',   'hi serrui',   'hi seruey',   'hi se rui',
-	'hi xi rui',   'hi siriui',   'hi siruwei',  'hi sir rui',
-	'嗨思瑞',       'hi 思瑞',      '嗨 思瑞',      '嗨sir瑞'
-];
-
 export function matchesWakeWord(raw: string): boolean {
-	const lower = raw.toLowerCase().trim();
-	if (WAKE_VARIANTS.some(v => lower.includes(v))) return true;
-
-	// Fuzzy: "hi/hey" + second word starting with a sibilant consonant ≥ 3 chars
-	// catches regional pronunciations like "hi Shiruei", "hey Xilui", etc.
-	const words = lower.split(/\s+/);
-	if (words.length >= 2 && (words[0] === 'hi' || words[0] === 'hey')) {
-		const w = words[1];
-		if (w.length >= 3 && /^[sxczš]/.test(w)) return true;
-	}
-	return false;
+	// "start" and common misrecognitions / near-homophones
+	return /\bstart(s|ed|er|ing)?\b/i.test(raw.trim());
 }
 
 export interface WakeDetectorOptions {
 	onWakeWord: () => void;
 }
 
+type WakeSpeechRecognitionAlternative = {
+	transcript: string;
+};
+
+type WakeSpeechRecognitionResult = {
+	readonly length: number;
+	[index: number]: WakeSpeechRecognitionAlternative;
+};
+
+type WakeSpeechRecognitionResultList = {
+	readonly length: number;
+	[index: number]: WakeSpeechRecognitionResult;
+};
+
+type WakeSpeechRecognitionEvent = {
+	readonly resultIndex: number;
+	readonly results: WakeSpeechRecognitionResultList;
+};
+
+type WakeSpeechRecognition = {
+	continuous: boolean;
+	interimResults: boolean;
+	maxAlternatives: number;
+	lang: string;
+	onresult: ((ev: WakeSpeechRecognitionEvent) => void) | null;
+	onend: (() => void) | null;
+	onerror: (() => void) | null;
+	start: () => void;
+	abort: () => void;
+};
+
+type WakeSpeechRecognitionConstructor = new () => WakeSpeechRecognition;
+
+type SpeechRecognitionWindow = Window & {
+	SpeechRecognition?: WakeSpeechRecognitionConstructor;
+	webkitSpeechRecognition?: WakeSpeechRecognitionConstructor;
+};
+
 export class WakeDetector {
-	private recognition: SpeechRecognition | null = null;
+	private recognitions: WakeSpeechRecognition[] = [];
 	private active = false;
 	private readonly opts: WakeDetectorOptions;
 
@@ -42,21 +62,23 @@ export class WakeDetector {
 	start(): void {
 		if (this.active || !this.isSupported) return;
 		this.active = true;
-		this.spawn();
+		this.spawn('en-US');
 	}
 
-	private spawn(): void {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
-		const r: SpeechRecognition = new SR();
-		this.recognition = r;
+	private spawn(lang: string): void {
+		const speechWindow = window as SpeechRecognitionWindow;
+		const SR = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+		if (!SR) return;
 
-		r.continuous = true;
-		r.interimResults = true;
+		const r = new SR();
+		this.recognitions.push(r);
+
+		r.continuous      = true;
+		r.interimResults  = true;
 		r.maxAlternatives = 3;
-		r.lang = 'en-US';
+		r.lang            = lang;
 
-		r.onresult = (ev: SpeechRecognitionEvent) => {
+		r.onresult = (ev: WakeSpeechRecognitionEvent) => {
 			if (!this.active) return;
 			for (let i = ev.resultIndex; i < ev.results.length; i++) {
 				for (let j = 0; j < ev.results[i].length; j++) {
@@ -68,9 +90,10 @@ export class WakeDetector {
 			}
 		};
 
-		// Auto-restart so detection runs indefinitely.
 		r.onend = () => {
-			if (this.active) setTimeout(() => { if (this.active) this.spawn(); }, 200);
+			const idx = this.recognitions.indexOf(r);
+			if (idx !== -1) this.recognitions.splice(idx, 1);
+			if (this.active) setTimeout(() => { if (this.active) this.spawn(lang); }, 200);
 		};
 
 		r.onerror = () => { /* handled via onend restart */ };
@@ -80,7 +103,7 @@ export class WakeDetector {
 
 	stop(): void {
 		this.active = false;
-		try { this.recognition?.abort(); } catch { /* ok */ }
-		this.recognition = null;
+		this.recognitions.forEach(r => { try { r.abort(); } catch { /* ok */ } });
+		this.recognitions = [];
 	}
 }

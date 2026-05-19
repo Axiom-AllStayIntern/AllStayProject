@@ -23,7 +23,7 @@ export interface SilenceVADOptions {
 export function attachSilenceVAD(stream: MediaStream, opts: SilenceVADOptions): () => void {
 	const {
 		silenceThresholdRMS = 0.015,
-		silenceDurationMs   = 2_000,
+		silenceDurationMs   = 1_500,
 		voiceThresholdRMS   = 0.02,
 		maxDurationMs       = 15_000,
 		onSilenceAfterVoice,

@@ -29,7 +29,7 @@ Analyze the guest's message and respond with ONLY a raw JSON object — no markd
 
 Response schema:
 {
-  "intent": "order" | "cancel_order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "other",
+  "intent": "order" | "cancel_order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
   "entities": {
     "dish": string | null,
     "quantity": number | null,
@@ -48,6 +48,8 @@ Rules:
 - reply must be short (1–2 sentences), friendly, and in the guest's language
 - For order intent with no specific dish: reply should invite the guest to browse the menu, do NOT ask for a dish name
 - Return ONLY the JSON object, nothing else
+- Use "switch_language" when the guest explicitly requests a language change: "speak English", "说中文", "switch to Chinese", "用英文", "换成中文", "please speak Chinese", etc. Reply naturally in the requested language confirming the switch.
+- Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
 
 cancel_order intent guide:
 Use "cancel_order" when the guest wants to remove, cancel, or undo an item from their cart.
@@ -79,10 +81,14 @@ export async function processConversation(input: ConversationInput): Promise<Con
 		{ role: 'user', content: input.message }
 	];
 
+	const langNote = input.language === 'zh'
+		? 'IMPORTANT: The guest is speaking Chinese. Your "reply" field MUST be in Chinese (Simplified). Do not use English.'
+		: 'IMPORTANT: The guest is speaking English. Your "reply" field MUST be in English. Do not use Chinese.';
+
 	const response = await client.messages.create({
 		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
 		max_tokens: 1024,
-		system: SYSTEM_PROMPT,
+		system: `${SYSTEM_PROMPT}\n\n${langNote}`,
 		messages
 	});
 
@@ -169,6 +175,10 @@ export async function processConversation(input: ConversationInput): Promise<Con
 			});
 			return { reply: result.reply, intent: 'info' };
 		}
+		case 'switch_language':
+			return { reply: parsed.reply, intent: 'switch_language' };
+		case 'close_conversation':
+			return { reply: parsed.reply, intent: 'close_conversation' };
 		default:
 			return { reply: parsed.reply, intent: parsed.intent };
 	}

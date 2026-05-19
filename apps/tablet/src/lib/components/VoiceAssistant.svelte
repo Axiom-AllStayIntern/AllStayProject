@@ -5,21 +5,24 @@
 	import { processVoiceInput, type AIResponse } from '$lib/services/ai-conversation.js';
 	import { speakText, stopSpeaking } from '$lib/utils/tts.js';
 	import { language } from '$lib/stores/language.js';
+	import { conversationHistory } from '$lib/stores/conversation.js';
 
 	export let onResult: (r: AIResponse) => void;
 
 	// ── State machine ──────────────────────────────────────────────────────────
-	type State = 'idle' | 'listening' | 'processing' | 'speaking' | 'active_wait';
+	type State = 'idle' | 'listening' | 'processing' | 'speaking';
 	let state: State = 'idle';
 
-	// ── Active-wait countdown ──────────────────────────────────────────────────
-	const WAIT_SECS      = 20;
-	const RING_RADIUS    = 26;
-	const CIRCUMFERENCE  = 2 * Math.PI * RING_RADIUS;
+	// ── Session timer (3-min max) ──────────────────────────────────────────────
+	const SESSION_MAX_MS  = 3 * 60 * 1_000;
+	const SESSION_WARN_MS = (2 * 60 + 50) * 1_000;
+	let sessionMaxTimer:  ReturnType<typeof setTimeout> | null = null;
+	let sessionWarnTimer: ReturnType<typeof setTimeout> | null = null;
+	let showSessionWarning = false;
 
-	let waitRemaining   = WAIT_SECS;
-	let sessionExpiresAt = 0;         // epoch ms; 0 = not yet set
-	let waitInterval: ReturnType<typeof setInterval> | null = null;
+	// ── Voice gate constants ───────────────────────────────────────────────────
+	const VOICE_GATE_RMS    = 0.04;  // RMS threshold to start recording after TTS
+	const POST_TTS_DELAY_MS = 300;   // ms to let TTS echo die down before monitoring
 
 	// ── Recording resources ────────────────────────────────────────────────────
 	let recStream: MediaStream | null = null;
@@ -30,11 +33,6 @@
 	// ── Detectors ──────────────────────────────────────────────────────────────
 	let wakeDetector: WakeDetector;
 
-	// Web Speech API used for two purposes:
-	//  • SPEAKING state → any speech interrupts TTS
-	//  • ACTIVE_WAIT state → any speech starts a new listening session
-	let activityRec: SpeechRecognition | null = null;
-
 	// ── Lifecycle ──────────────────────────────────────────────────────────────
 	onMount(() => {
 		wakeDetector = new WakeDetector({ onWakeWord: handleWakeWord });
@@ -43,22 +41,49 @@
 
 	onDestroy(teardown);
 
-	// ── IDLE → LISTENING via wake word ─────────────────────────────────────────
+	// ── IDLE → SESSION via wake word ───────────────────────────────────────────
 	function handleWakeWord() {
 		if (state !== 'idle') return;
 		wakeDetector.stop();
+		startSession();
+	}
+
+	function startSession() {
+		showSessionWarning = false;
+
+		sessionWarnTimer = setTimeout(() => {
+			showSessionWarning = true;
+		}, SESSION_WARN_MS);
+
+		sessionMaxTimer = setTimeout(() => {
+			goIdle();
+		}, SESSION_MAX_MS);
+
 		startListening();
 	}
 
+	function stopSessionTimers() {
+		if (sessionWarnTimer) { clearTimeout(sessionWarnTimer); sessionWarnTimer = null; }
+		if (sessionMaxTimer)  { clearTimeout(sessionMaxTimer);  sessionMaxTimer  = null; }
+		showSessionWarning = false;
+	}
+
 	// ── LISTENING state ────────────────────────────────────────────────────────
-	async function startListening() {
+	// postTts=true: wait for echo to settle then gate on voice before recording starts
+	async function startListening(postTts = false) {
 		state = 'listening';
-		stopWaitCountdown();
-		stopActivityRec();
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			if (state !== 'listening') { stream.getTracks().forEach(t => t.stop()); return; }
 			recStream = stream;
+
+			if (postTts) {
+				await new Promise(r => setTimeout(r, POST_TTS_DELAY_MS));
+				if (state !== 'listening') { releaseStream(); return; }
+				await waitForVoiceGate(stream);
+				if (state !== 'listening') { releaseStream(); return; }
+			}
 
 			const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
 			chunks  = [];
@@ -75,6 +100,39 @@
 		}
 	}
 
+	// Waits until mic RMS exceeds VOICE_GATE_RMS (user has started speaking).
+	function waitForVoiceGate(stream: MediaStream): Promise<void> {
+		return new Promise(resolve => {
+			const ctx      = new AudioContext();
+			const src      = ctx.createMediaStreamSource(stream);
+			const analyser = ctx.createAnalyser();
+			analyser.fftSize = 512;
+			src.connect(analyser);
+			const buf = new Float32Array(analyser.fftSize);
+			let rafId = 0;
+			let done  = false;
+
+			const finish = () => {
+				if (done) return;
+				done = true;
+				cancelAnimationFrame(rafId);
+				src.disconnect();
+				ctx.close().catch(() => {});
+				resolve();
+			};
+
+			function tick() {
+				if (done || state !== 'listening') { finish(); return; }
+				analyser.getFloatTimeDomainData(buf);
+				let s = 0;
+				for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+				if (Math.sqrt(s / buf.length) > VOICE_GATE_RMS) { finish(); return; }
+				rafId = requestAnimationFrame(tick);
+			}
+			tick();
+		});
+	}
+
 	// ── Silence detected → PROCESSING ─────────────────────────────────────────
 	async function handleSilence() {
 		if (state !== 'listening') return;
@@ -85,34 +143,44 @@
 		const blob = await drainRecorder();
 		releaseStream();
 
-		// Ignore trivially small blobs (< 500 bytes ≈ pure silence/noise)
+		if (state === 'idle') return; // session ended by timer
+
+		// Trivially small blob → resume listening without resetting session
 		if (!blob || blob.size < 500) {
-			goActiveWait(false);
+			startListening();
 			return;
 		}
 
 		try {
 			const response = await processVoiceInput(blob, $language);
 
-			// Empty STT → mumbling/background noise; don't reset the 20 s timer
+			if (state === 'idle') return;
+
 			if (!response.text?.trim()) {
-				goActiveWait(false);
+				startListening();
 				return;
 			}
 
-			// Valid command — move to SPEAKING and reset the session timer
+			// Close-session intent: speak goodbye then end
+			if (response.action?.type === 'close_session') {
+				state = 'speaking';
+				onResult(response);
+				await speakText(response.text);
+				goIdle();
+				return;
+			}
+
 			state = 'speaking';
 			onResult(response);
-			startActivityRec();           // listen for interruptions while TTS plays
 			await speakText(response.text);
 
+			if (state === 'idle') return;
+
 			if (state === 'speaking') {
-				// Natural end (not interrupted by user speech)
-				goActiveWait(true);
+				startListening(true);
 			}
-			// If interrupted, handleActivitySpeech already changed state
 		} catch {
-			goActiveWait(false);
+			if (state !== 'idle') startListening();
 		}
 	}
 
@@ -140,107 +208,20 @@
 		recorder   = null;
 	}
 
-	// ── ACTIVE_WAIT state ──────────────────────────────────────────────────────
-	function goActiveWait(resetTimer: boolean) {
-		stopActivityRec();
-		state = 'active_wait';
-
-		// Set (or keep) the expiry timestamp
-		if (resetTimer || sessionExpiresAt === 0) {
-			sessionExpiresAt = Date.now() + WAIT_SECS * 1_000;
-		}
-		waitRemaining = Math.max(1, Math.ceil((sessionExpiresAt - Date.now()) / 1_000));
-
-		stopWaitCountdown();
-		waitInterval = setInterval(() => {
-			const rem = Math.ceil((sessionExpiresAt - Date.now()) / 1_000);
-			waitRemaining = Math.max(0, rem);
-			if (Date.now() >= sessionExpiresAt) goIdle();
-		}, 250);
-
-		// Any speech in this window triggers the next command cycle
-		startActivityRec(true);
-	}
-
-	// ── Activity recognition (SPEAKING interruption / ACTIVE_WAIT detection) ──
-	function startActivityRec(forActiveWait = false) {
-		stopActivityRec();
-		if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) return;
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
-		const r: SpeechRecognition = new SR();
-		activityRec = r;
-
-		r.continuous     = true;
-		r.interimResults = true;
-		r.lang           = 'en-US';
-
-		r.onresult = async (ev: SpeechRecognitionEvent) => {
-			for (let i = ev.resultIndex; i < ev.results.length; i++) {
-				const text = ev.results[i][0].transcript.trim();
-				if (text.length < 2) continue;
-
-				if (state === 'speaking') {
-					// User speaks during TTS → interrupt and start new command
-					stopSpeaking();
-					stopActivityRec();
-					state = 'listening';   // guard against re-entry before await
-					await startListening();
-					return;
-				}
-
-				if (state === 'active_wait' && forActiveWait) {
-					// User speaks within the 20 s window → start new command
-					stopActivityRec();
-					stopWaitCountdown();
-					await startListening();
-					return;
-				}
-			}
-		};
-
-		// Auto-restart so recognition stays alive for the entire state duration
-		r.onend = () => {
-			if (activityRec === r && (state === 'speaking' || state === 'active_wait')) {
-				setTimeout(() => {
-					if (state === 'speaking' || state === 'active_wait') startActivityRec(forActiveWait);
-				}, 200);
-			}
-		};
-
-		r.onerror = () => { /* handled via onend restart */ };
-
-		try { r.start(); } catch { /* already running */ }
-	}
-
-	function stopActivityRec() {
-		const r = activityRec;
-		activityRec = null;
-		try { r?.abort(); } catch { /* ok */ }
-	}
-
 	// ── IDLE state ─────────────────────────────────────────────────────────────
 	function goIdle() {
-		stopWaitCountdown();
-		stopActivityRec();
+		stopSessionTimers();
 		stopSpeaking();
 		vadStop?.(); vadStop = null;
 		releaseStream();
-		sessionExpiresAt = 0;
 		state = 'idle';
 		wakeDetector?.start();
 	}
 
-	function stopWaitCountdown() {
-		if (waitInterval) { clearInterval(waitInterval); waitInterval = null; }
-	}
-
 	function teardown() {
 		wakeDetector?.stop();
-		stopActivityRec();
 		stopSpeaking();
-		stopWaitCountdown();
+		stopSessionTimers();
 		vadStop?.();
 		releaseStream();
 	}
@@ -249,47 +230,43 @@
 	function handleButtonClick() {
 		if (state === 'idle') {
 			wakeDetector.stop();
-			startListening();
+			startSession();
 		} else if (state === 'listening') {
 			handleSilence();
 		} else if (state === 'speaking') {
 			stopSpeaking();
-			goActiveWait(false);
-		} else if (state === 'active_wait') {
-			stopWaitCountdown();
-			stopActivityRec();
-			startListening();
+			startListening(true);
 		}
+		// processing: ignore taps
 	}
 
-	// ── Derived values ─────────────────────────────────────────────────────────
-	$: dashOffset  = CIRCUMFERENCE * (1 - waitRemaining / WAIT_SECS);
-	$: waitLabel   = $language === 'zh' ? '继续说...' : 'Still here...';
-	$: ariaLabel   =
-		state === 'idle'        ? 'Say "Hi Sirui" to start' :
+	// ── Derived ────────────────────────────────────────────────────────────────
+	$: bubbles = $conversationHistory.slice(-3);
+
+	$: ariaLabel =
+		state === 'idle'        ? 'Say "Start" to begin' :
 		state === 'listening'   ? 'Listening…' :
 		state === 'processing'  ? 'Processing…' :
-		state === 'speaking'    ? 'Tap to interrupt' :
-		                          ($language === 'zh' ? `继续说 (${waitRemaining}s)` : `Still listening (${waitRemaining}s)`);
+		                          'Tap to interrupt';
 </script>
 
 <div class="assistant-root">
-	<!-- ── Active-wait ring ──────────────────────────────────────────────── -->
-	{#if state === 'active_wait'}
-		<div class="wait-ring" aria-hidden="true">
-			<svg width="72" height="72" viewBox="0 0 64 64">
-				<circle cx="32" cy="32" r={RING_RADIUS} class="ring-track" />
-				<circle
-					cx="32" cy="32" r={RING_RADIUS}
-					class="ring-fill"
-					stroke-dasharray={CIRCUMFERENCE}
-					stroke-dashoffset={dashOffset}
-					transform="rotate(-90 32 32)"
-				/>
-			</svg>
-			<span class="wait-secs">{waitRemaining}</span>
+	<!-- ── Session warning ──────────────────────────────────────────────── -->
+	{#if showSessionWarning}
+		<div class="session-warning" role="alert">
+			{$language === 'zh' ? '对话将在10秒后结束' : 'Conversation ending in 10s…'}
 		</div>
-		<div class="wait-label">{waitLabel}</div>
+	{/if}
+
+	<!-- ── Conversation bubbles ─────────────────────────────────────────── -->
+	{#if state !== 'idle' && bubbles.length > 0}
+		<div class="chat-bubbles">
+			{#each bubbles as turn, i}
+				<div class="bubble" class:user={turn.role === 'user'} class:assistant={turn.role === 'assistant'}>
+					{turn.content}
+				</div>
+			{/each}
+		</div>
 	{/if}
 
 	<!-- ── Voice button ──────────────────────────────────────────────────── -->
@@ -298,7 +275,6 @@
 		class:listening={state === 'listening'}
 		class:processing={state === 'processing'}
 		class:speaking={state === 'speaking'}
-		class:active-wait={state === 'active_wait'}
 		on:click={handleButtonClick}
 		disabled={state === 'processing'}
 		aria-label={ariaLabel}
@@ -321,14 +297,7 @@
 				<line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 				<line x1="9"  y1="23" x2="15" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 			</svg>
-		{:else if state === 'active_wait'}
-			<svg class="icon-ear" viewBox="0 0 24 24" aria-hidden="true">
-				<path d="M6 9a6 6 0 1 1 12 0c0 3.5-2 5-3 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-				<path d="M10 9a2 2 0 0 1 4 0c0 1.5-1 2.5-1.5 3.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-				<circle cx="9" cy="20" r="1.5" fill="currentColor"/>
-			</svg>
 		{:else}
-			<!-- idle: microphone icon -->
 			<svg class="icon-mic" viewBox="0 0 24 24" aria-hidden="true">
 				<rect x="9" y="1" width="6" height="13" rx="3" fill="currentColor"/>
 				<path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
@@ -348,58 +317,55 @@
 		z-index: 200;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 6px;
+		align-items: flex-end;
+		gap: 8px;
 	}
 
-	/* ── Active-wait ring ────────────────────────────────────────────────────── */
-	.wait-ring {
-		position: relative;
-		width: 72px;
-		height: 72px;
-		display: grid;
-		place-items: center;
-	}
-
-	.wait-ring svg {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-	}
-
-	.ring-track {
-		fill: none;
-		stroke: rgba(255, 255, 255, 0.2);
-		stroke-width: 4;
-	}
-
-	.ring-fill {
-		fill: none;
-		stroke: #4fc3f7;
-		stroke-width: 4;
-		stroke-linecap: round;
-		transition: stroke-dashoffset 0.25s linear;
-	}
-
-	.wait-secs {
-		position: relative;
-		font-size: 16px;
-		font-weight: 700;
+	/* ── Session warning toast ───────────────────────────────────────────────── */
+	.session-warning {
+		font-size: 12px;
 		color: #fff;
-		line-height: 1;
-		text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-	}
-
-	.wait-label {
-		font-size: 11px;
-		color: #fff;
-		background: rgba(2, 136, 209, 0.85);
-		padding: 3px 10px;
-		border-radius: 10px;
+		background: rgba(229, 115, 20, 0.9);
+		padding: 6px 12px;
+		border-radius: 12px;
 		white-space: nowrap;
-		pointer-events: none;
 		backdrop-filter: blur(4px);
+		animation: fadeIn 0.3s ease;
+	}
+
+	/* ── Conversation bubbles ────────────────────────────────────────────────── */
+	.chat-bubbles {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-width: 300px;
+		width: max-content;
+		align-items: flex-end;
+	}
+
+	.bubble {
+		max-width: 280px;
+		padding: 8px 12px;
+		border-radius: 16px;
+		font-size: 13px;
+		line-height: 1.4;
+		word-break: break-word;
+		animation: fadeIn 0.2s ease;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+	}
+
+	.bubble.user {
+		background: #1a2744;
+		color: #fff;
+		border-bottom-right-radius: 4px;
+		align-self: flex-end;
+	}
+
+	.bubble.assistant {
+		background: rgba(255, 255, 255, 0.92);
+		color: #1a2744;
+		border-bottom-left-radius: 4px;
+		align-self: flex-start;
 	}
 
 	/* ── Voice button ────────────────────────────────────────────────────────── */
@@ -436,15 +402,9 @@
 		animation: none;
 	}
 
-	.voice-btn.active-wait {
-		background: #0288d1;
-		animation: breathe 2s ease-in-out infinite;
-	}
-
 	/* ── SVG icons ───────────────────────────────────────────────────────────── */
 	.icon-mic,
-	.icon-wave,
-	.icon-ear {
+	.icon-wave {
 		width: 24px;
 		height: 24px;
 		flex-shrink: 0;
@@ -480,12 +440,12 @@
 		100% { box-shadow: 0 0 0 0   rgba(229, 57, 53, 0);     }
 	}
 
-	@keyframes breathe {
-		0%, 100% { box-shadow: 0 0 0 0   rgba(2, 136, 209, 0.45); }
-		50%       { box-shadow: 0 0 0 14px rgba(2, 136, 209, 0);    }
-	}
-
 	@keyframes spin { to { transform: rotate(360deg); } }
+
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(4px); }
+		to   { opacity: 1; transform: translateY(0); }
+	}
 
 	@keyframes eq {
 		0%, 100% { transform: scaleY(0.5); }
