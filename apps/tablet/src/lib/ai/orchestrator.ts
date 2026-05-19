@@ -49,7 +49,7 @@ Rules:
 - reply must be short (1–2 sentences), friendly, and in the guest's language
 - For order intent with no specific dish: reply should invite the guest to browse the menu, do NOT ask for a dish name
 - foodTag: set when the guest mentions a food category without naming a specific dish. Values: "noodles" (面食/面条/noodles), "rice" (米饭/炒饭/rice), "sandwich" (三明治/sandwich), "sweet" (甜点/松饼/pancake/dessert), "fruit" (水果/fruit), "drinks" (饮品/饮料/drinks/beverage). Leave null if a specific dish is named or the category is unclear.
-- When foodTag is set and no specific dish, naturally recommend the top pick for that category in your reply ("I'd especially recommend…" / "特别推荐…"): noodles→Mie Aceh/亚齐香料面 (new arrival), rice→Nasi Goreng/印尼炒饭, sandwich→Club Sandwich/俱乐部三明治, sweet→Pancake Stack/松饼塔, fruit→Tropical Fruit Platter/热带水果拼盘, drinks→Fresh Coconut Water/鲜椰青
+- When foodTag is set and no specific dish, naturally recommend the top pick for that category in your reply ("I'd especially recommend…" / "特别推荐…"): noodles→Mie Aceh/亚齐香料面 (new arrival, **limited-time 20% off / 8折优惠**, mention the discount naturally), rice→Nasi Goreng/印尼炒饭, sandwich→Club Sandwich/俱乐部三明治, sweet→Pancake Stack/松饼塔, fruit→Tropical Fruit Platter/热带水果拼盘, drinks→Fresh Coconut Water/鲜椰青
 - Return ONLY the JSON object, nothing else
 - Use "switch_language" when the guest explicitly requests a language change: "speak English", "说中文", "switch to Chinese", "用英文", "换成中文", "please speak Chinese", etc. Reply naturally in the requested language confirming the switch.
 - Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
