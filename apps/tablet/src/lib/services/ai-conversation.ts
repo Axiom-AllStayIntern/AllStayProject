@@ -16,15 +16,17 @@ export interface AIResponse {
 }
 
 const INTENT_ROUTES: Record<string, string> = {
-	order: '/dining',
-	booking_spa: '/spa',
-	booking_restaurant: '/restaurants',
-	booking_transport: '/explore'
+	order:               '/dining',
+	checkout:            '/cart',
+	booking_spa:         '/spa',
+	booking_restaurant:  '/restaurants',
+	booking_transport:   '/explore'
 };
 
 export async function processVoiceInput(
 	audioBlob: Blob,
-	_hint: 'en' | 'zh' = 'zh'  // kept for API compat, actual lang comes from Whisper detection
+	_hint: 'en' | 'zh' = 'zh',
+	onReplyChunk?: (partial: string) => void   // called with cumulative reply as it streams
 ): Promise<AIResponse> {
 	// ── 1. Speech-to-text (Whisper auto-detects language) ────────────────────
 	const formData = new FormData();
@@ -39,41 +41,66 @@ export async function processVoiceInput(
 
 	// Auto-switch UI language to match what the user spoke
 	const currentLang = get(languageStore);
-	if (detected !== currentLang) {
-		languageStore.set(detected);
-	}
+	if (detected !== currentLang) languageStore.set(detected);
 	const language = detected;
 
-	// Append user turn to history BEFORE calling conversation
 	conversationHistory.addTurn({ role: 'user', content: userText });
 
-	// ── 2. Intent + conversation ──────────────────────────────────────────────
-	const roomId = get(roomNumber) ?? 'guest';
-	const history = get(conversationHistory).slice(0, -1); // all turns except the one we just added
+	// ── 2. Intent + conversation (SSE stream) ─────────────────────────────────
+	const roomId  = get(roomNumber) ?? 'guest';
+	const history = get(conversationHistory).slice(0, -1);
 
 	const convRes = await fetch('/api/conversation', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ message: userText, roomId, language, history })
 	});
-	if (!convRes.ok) throw new Error('AI service unavailable');
+	if (!convRes.ok || !convRes.body) throw new Error('AI service unavailable');
 
-	const { reply, intent, data } = (await convRes.json()) as {
-		reply: string;
-		intent?: string;
-		data?: unknown;
-	};
+	// Read SSE stream
+	const reader  = convRes.body.getReader();
+	const decoder = new TextDecoder();
+	let sseBuffer  = '';
+	let replyAccum = '';
+	let reply      = '';
+	let intent: string | undefined;
+	let data: unknown;
 
-	// Append assistant reply to history
+	outer: while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+
+		sseBuffer += decoder.decode(value, { stream: true });
+		const lines = sseBuffer.split('\n');
+		sseBuffer = lines.pop() ?? '';   // keep incomplete last line
+
+		for (const line of lines) {
+			if (!line.startsWith('data: ')) continue;
+			let event: Record<string, unknown>;
+			try { event = JSON.parse(line.slice(6)); }
+			catch { continue; }
+
+			if (event.t === 'chunk') {
+				replyAccum += event.v as string;
+				onReplyChunk?.(replyAccum);
+			} else if (event.t === 'done') {
+				reply  = event.reply  as string ?? replyAccum;
+				intent = event.intent as string | undefined;
+				data   = event.data;
+				break outer;
+			} else if (event.t === 'error') {
+				throw new Error((event.message as string) ?? 'AI service error');
+			}
+		}
+	}
+
 	conversationHistory.addTurn({ role: 'assistant', content: reply });
 
 	// ── 3. Build AIResponse ───────────────────────────────────────────────────
-
 	if (intent === 'close_conversation') {
 		return { text: reply, action: { type: 'close_session' }, confidence: 0.95 };
 	}
 
-	// Cart removal — handled client-side from the cart store
 	if (intent === 'cancel_order') {
 		const d = data as { itemName: string | null } | null;
 		return {
@@ -98,7 +125,7 @@ export async function processVoiceInput(
 
 	return {
 		text: reply,
-		action: shouldNavigate ? { type: 'navigate', payload: { route: targetRoute } } : null,
+		action: shouldNavigate ? { type: 'navigate', payload: { route: targetRoute! } } : null,
 		confidence: targetRoute ? 0.92 : intent === 'info' ? 0.65 : 0.35,
 		agentData: data ?? undefined
 	};

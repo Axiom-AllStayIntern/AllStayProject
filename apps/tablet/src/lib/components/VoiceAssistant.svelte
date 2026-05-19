@@ -152,7 +152,11 @@
 		}
 
 		try {
-			const response = await processVoiceInput(blob, $language);
+			streamingReply = '';
+			const response = await processVoiceInput(blob, $language, (partial) => {
+				streamingReply = partial;
+			});
+			streamingReply = '';
 
 			if (state === 'idle') return;
 
@@ -180,6 +184,7 @@
 				startListening(true);
 			}
 		} catch {
+			streamingReply = '';
 			if (state !== 'idle') startListening();
 		}
 	}
@@ -263,6 +268,9 @@
 		longPressing = false;
 	}
 
+	// ── Streaming reply (shown while Claude is generating) ────────────────────
+	let streamingReply = '';
+
 	// ── Derived ────────────────────────────────────────────────────────────────
 	$: bubbles = $conversationHistory.slice(-3);
 
@@ -282,13 +290,18 @@
 	{/if}
 
 	<!-- ── Conversation bubbles ─────────────────────────────────────────── -->
-	{#if state !== 'idle' && bubbles.length > 0}
+	{#if state !== 'idle' && (bubbles.length > 0 || streamingReply)}
 		<div class="chat-bubbles">
-			{#each bubbles as turn, i}
+			{#each bubbles as turn}
 				<div class="bubble" class:user={turn.role === 'user'} class:assistant={turn.role === 'assistant'}>
 					{turn.content}
 				</div>
 			{/each}
+			{#if streamingReply}
+				<div class="bubble assistant streaming">
+					{streamingReply}<span class="typing-cursor" aria-hidden="true"></span>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -403,6 +416,23 @@
 		color: #1a2744;
 		border-bottom-left-radius: 4px;
 		align-self: flex-start;
+	}
+
+	.bubble.streaming { opacity: 0.92; }
+
+	.typing-cursor {
+		display: inline-block;
+		width: 2px; height: 1em;
+		background: #1a2744;
+		margin-left: 2px;
+		vertical-align: text-bottom;
+		border-radius: 1px;
+		animation: blink 0.8s step-end infinite;
+	}
+
+	@keyframes blink {
+		0%, 100% { opacity: 1; }
+		50%       { opacity: 0; }
 	}
 
 	/* ── Voice button wrapper + hold ring ───────────────────────────────────── */

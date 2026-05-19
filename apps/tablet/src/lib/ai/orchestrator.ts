@@ -29,7 +29,7 @@ Analyze the guest's message and respond with ONLY a raw JSON object — no markd
 
 Response schema:
 {
-  "intent": "order" | "cancel_order" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
+  "intent": "order" | "cancel_order" | "checkout" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
   "entities": {
     "dish": string | null,
     "quantity": number | null,
@@ -53,6 +53,7 @@ Rules:
 - When foodTag is set and no specific dish, naturally recommend the top pick for that category in your reply. Always include a chef's endorsement phrase (e.g. "这也是我们主厨的私人推荐" / "our head chef personally recommends this one"). Top picks: noodles→Mie Aceh/亚齐香料面 (new arrival, **limited-time 20% off / 8折优惠**, mention the discount naturally), rice→Nasi Goreng/印尼炒饭, sandwich→Club Sandwich/俱乐部三明治, sweet→Pancake Stack/松饼塔, fruit→Tropical Fruit Platter/热带水果拼盘, drinks→Fresh Coconut Water/鲜椰青
 - Return ONLY the JSON object, nothing else
 - Use "switch_language" when the guest explicitly requests a language change: "speak English", "说中文", "switch to Chinese", "用英文", "换成中文", "please speak Chinese", etc. Reply naturally in the requested language confirming the switch.
+- Use "checkout" when the guest wants to place/submit their order, go to cart, or confirm their selections: "下单", "结账", "去购物车", "提交订单", "place my order", "go to cart", "checkout", "confirm order", "I'm done ordering", "that's all for food", "可以下单了", "帮我结算" etc. Reply in the guest's language reminding them they'll need to manually confirm on the next screen.
 - Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
 
 cancel_order intent guide:
@@ -76,7 +77,7 @@ Examples:
   (nothing mentioned) → null`;
 
 const TAG_RECOMMENDATIONS: Record<string, string> = {
-	noodles:  'mie-aceh',   // newest featured noodle dish
+	noodles:  'mie-aceh',
 	rice:     'nasi',
 	sandwich: 'club',
 	sweet:    'pkx',
@@ -84,50 +85,37 @@ const TAG_RECOMMENDATIONS: Record<string, string> = {
 	drinks:   'coco',
 };
 
-export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
-	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-	const messages: Anthropic.MessageParam[] = [
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+
+function buildMessages(input: ConversationInput): Anthropic.MessageParam[] {
+	return [
 		...(input.history ?? []).map((m) => ({
 			role: m.role as 'user' | 'assistant',
 			content: m.content
 		})),
 		{ role: 'user', content: input.message }
 	];
+}
 
+function buildSystem(input: ConversationInput): string {
 	const langNote = input.language === 'zh'
 		? 'IMPORTANT: The guest is speaking Chinese. Your "reply" field MUST be in Chinese (Simplified). Do not use English.'
 		: 'IMPORTANT: The guest is speaking English. Your "reply" field MUST be in English. Do not use Chinese.';
+	return `${SYSTEM_PROMPT}\n\n${langNote}`;
+}
 
-	const response = await client.messages.create({
-		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
-		max_tokens: 1024,
-		system: `${SYSTEM_PROMPT}\n\n${langNote}`,
-		messages
-	});
-
-	const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-	// Strip markdown code fences Claude occasionally adds despite instructions
-	const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
-	let parsed: { intent: string; entities: Record<string, unknown>; reply: string };
-	try {
-		parsed = JSON.parse(text);
-	} catch {
-		return { reply: raw };
-	}
-
-	// Dispatch to appropriate agent
+async function dispatchParsed(
+	parsed: { intent: string; entities: Record<string, unknown>; reply: string },
+	input: ConversationInput
+): Promise<ConversationOutput> {
 	switch (parsed.intent) {
 		case 'cancel_order': {
 			const dish = (parsed.entities.dish as string | null) ?? null;
-			return {
-				reply: parsed.reply,
-				intent: 'cancel_order',
-				data: { itemName: dish }   // null = cancel last item
-			};
+			return { reply: parsed.reply, intent: 'cancel_order', data: { itemName: dish } };
 		}
+		case 'checkout':
+			return { reply: parsed.reply, intent: 'checkout' };
 		case 'order': {
-			// No specific dish → navigate to menu with optional tag + recommendation
 			if (!parsed.entities.dish) {
 				const tag       = (parsed.entities.foodTag as string | null) ?? null;
 				const recommend = tag ? (TAG_RECOMMENDATIONS[tag] ?? null) : null;
@@ -142,8 +130,6 @@ export async function processConversation(input: ConversationInput): Promise<Con
 				roomId: input.roomId,
 				language: input.language
 			});
-			// On success: Claude's contextual reply + agent's factual confirmation line
-			// On failure: agent's error reply (Claude's reply may be incorrect at this point)
 			const reply = result.success && result.confirmLine
 				? `${parsed.reply}\n${result.confirmLine}`
 				: (result.reply ?? parsed.reply);
@@ -197,4 +183,98 @@ export async function processConversation(input: ConversationInput): Promise<Con
 		default:
 			return { reply: parsed.reply, intent: parsed.intent };
 	}
+}
+
+function parseRaw(raw: string): { intent: string; entities: Record<string, unknown>; reply: string } | null {
+	const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+	try {
+		return JSON.parse(text);
+	} catch {
+		return null;
+	}
+}
+
+// Extracts new characters from the "reply" field of a partially-streamed JSON string.
+function extractReplyProgress(
+	accumulated: string,
+	lastLen: number
+): { chars: string; newLen: number } {
+	const keyMatch = accumulated.match(/"reply"\s*:\s*"/);
+	if (!keyMatch || keyMatch.index === undefined) return { chars: '', newLen: lastLen };
+
+	const start = keyMatch.index + keyMatch[0].length;
+	let replyText = '';
+	let i = start;
+	while (i < accumulated.length) {
+		const c = accumulated[i];
+		if (c === '\\' && i + 1 < accumulated.length) {
+			const esc = accumulated[i + 1];
+			if      (esc === '"')  replyText += '"';
+			else if (esc === 'n')  replyText += '\n';
+			else if (esc === 't')  replyText += '\t';
+			else if (esc === '\\') replyText += '\\';
+			else                   replyText += esc;
+			i += 2;
+		} else if (c === '"') {
+			break;
+		} else {
+			replyText += c;
+			i++;
+		}
+	}
+
+	if (replyText.length > lastLen) {
+		return { chars: replyText.slice(lastLen), newLen: replyText.length };
+	}
+	return { chars: '', newLen: lastLen };
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────────
+
+export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
+	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+	const response = await client.messages.create({
+		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
+		max_tokens: 1024,
+		system: buildSystem(input),
+		messages: buildMessages(input)
+	});
+
+	const raw = response.content[0].type === 'text' ? response.content[0].text : '';
+	const parsed = parseRaw(raw);
+	if (!parsed) return { reply: raw };
+	return dispatchParsed(parsed, input);
+}
+
+/** Streaming variant — calls onReplyChunk with incremental reply text as Claude generates it.
+ *  Returns the full ConversationOutput once the stream is complete and agents have run. */
+export async function streamConversation(
+	input: ConversationInput,
+	onReplyChunk: (chunk: string) => void
+): Promise<ConversationOutput> {
+	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+	let accumulated = '';
+	let lastReplyLen = 0;
+
+	const stream = client.messages.stream({
+		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
+		max_tokens: 1024,
+		system: buildSystem(input),
+		messages: buildMessages(input)
+	});
+
+	for await (const event of stream) {
+		if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+			accumulated += event.delta.text;
+			const { chars, newLen } = extractReplyProgress(accumulated, lastReplyLen);
+			if (chars) {
+				onReplyChunk(chars);
+				lastReplyLen = newLen;
+			}
+		}
+	}
+
+	const parsed = parseRaw(accumulated);
+	if (!parsed) return { reply: accumulated };
+	return dispatchParsed(parsed, input);
 }
