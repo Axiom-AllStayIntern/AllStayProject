@@ -1,124 +1,358 @@
 <script lang="ts">
-	import { _ } from 'svelte-i18n';
+	import Header from '$lib/components/Header.svelte';
+	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { language } from '$lib/stores/language.js';
 	import { formatPrice } from '$lib/utils/format.js';
-	import DateTimePicker from '$lib/components/DateTimePicker.svelte';
-	import type { SpaService } from '$types/spa.js';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
 
-	let selectedService: SpaService | null = null;
-	let bookingDate = '';
-	let bookingTime = '';
-	let showBooking = false;
+	// ── Bottom sheet state ─────────────────────────────────────
+	let sheetItem: any = null;
+	let sheetLocation = 'inRoom';
+	let sheetDate = 'today';
+	let sheetTime = '';
+	let sheetGuests = 1;
 
-	function selectService(service: SpaService) {
-		selectedService = service;
-		showBooking = true;
+	const TIME_SLOTS = ['10:00','11:30','13:00','14:30','16:00','17:30','19:00','20:30'];
+	const TAKEN = ['13:00','17:30'];
+
+	function openSheet(service: any) {
+		sheetItem = service;
+		sheetLocation = 'inRoom';
+		sheetDate = 'today';
+		sheetTime = '';
+		sheetGuests = 1;
 	}
+	function closeSheet() { sheetItem = null; }
 
 	async function submitBooking() {
-		if (!selectedService || !bookingDate || !bookingTime) return;
-		await fetch(`/api/spa/${selectedService.id}`, {
+		if (!sheetItem || !sheetDate || !sheetTime) return;
+		await fetch(`/api/spa/${sheetItem.id}`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ date: bookingDate, time: bookingTime })
+			body: JSON.stringify({ date: sheetDate, time: sheetTime, location: sheetLocation, guests: sheetGuests })
 		});
-		showBooking = false;
+		closeSheet();
 	}
+
+	// ── SVG glyphs ─────────────────────────────────────────────
+	const GLYPH_PATHS: Record<string, string> = {
+		leaf:   '<path d="M11 21c0-9 6-13 11-13-1 7-5 13-11 13zM11 21c-2-3-2-7 0-10"/>',
+		stone:  '<ellipse cx="12" cy="16" rx="8" ry="3"/><ellipse cx="10" cy="11" rx="5" ry="2"/><ellipse cx="14" cy="7" rx="3" ry="1.5"/>',
+		flower: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 4-6 4-2s-4 4-4 2zM12 14c0 4 4 6 4 2s-4-4-4-2zM10 12c-4 0-6-4-2-4s4 4 2 4zM14 12c4 0 6-4 2-4s-4 4-2 4z"/>',
+		foot:   '<path d="M9 22V14a3 3 0 0 1 6 0v8M8 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM14 6a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0z"/>',
+		hearts: '<path d="M12 19c-5-3-7-7-5-10 1.5-2 4-1 5 1 1-2 3.5-3 5-1 2 3 0 7-5 10z"/>'
+	};
 </script>
 
-<div class="spa">
-	<h1 class="page-title">{$_('spa.title')}</h1>
+<div class="shell">
+<Header />
+<main class="main scroll">
+<div class="page-enter">
 
-	<div class="service-list">
-		{#each data.services as service}
-			<div class="service-card">
-				{#if service.imageUrl}
-					<img src={service.imageUrl} alt={service.name[$language]} class="service-card__img" />
-				{/if}
-				<div class="service-card__body">
-					<h3 class="service-card__name">{service.name[$language]}</h3>
-					<p class="service-card__desc">{service.description[$language]}</p>
-					<div class="service-card__meta">
-						<span>{$_('spa.duration', { values: { min: service.duration } })}</span>
-						<span class="price">{formatPrice(service.price)}</span>
-					</div>
-					<button class="btn-book" on:click={() => selectService(service)} disabled={!service.isAvailable}>
-						{$_('spa.bookNow')}
-					</button>
-				</div>
-			</div>
-		{/each}
-	</div>
+<!-- ── Page content ─────────────────────────────────────────── -->
+<div class="page-hero">
+	<div class="eyebrow">Sanctuary at AllStay</div>
+	<h2>Spa &amp; Wellness</h2>
+	<p>Treatments inspired by Balinese healing rituals · 9:00 – 22:00 · In-room or in-spa.</p>
 </div>
 
-{#if showBooking && selectedService}
-	<div class="booking-overlay" role="dialog">
-		<div class="booking-modal">
-			<h2>{selectedService.name[$language]}</h2>
-			<DateTimePicker bind:date={bookingDate} bind:time={bookingTime} />
-			<button class="btn-confirm" on:click={submitBooking} disabled={!bookingDate || !bookingTime}>
-				{$_('common.confirm')}
-			</button>
-			<button class="btn-cancel" on:click={() => showBooking = false}>{$_('common.cancel')}</button>
+<div class="spa-list">
+	{#each data.services as s}
+		<div class="spa-card">
+			<div class="spa-thumb">
+				{#if s.imageUrl}
+					<img src={s.imageUrl} alt={s.name.en} loading="lazy" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
+				{:else}
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+						{@html GLYPH_PATHS[s.glyph] ?? GLYPH_PATHS.leaf}
+					</svg>
+				{/if}
+			</div>
+			<div class="info">
+				<div class="name">
+					{s.name[$language]}
+					{#if $language === 'en'}<span class="cn">{s.name.zh}</span>{/if}
+				</div>
+				<div class="meta">
+					<span class="pill">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+						{s.duration} min
+					</span>
+					{#if s.isAvailable}
+						<span class="pill success">Open now</span>
+					{:else}
+						<span class="pill warn">Unavailable</span>
+					{/if}
+				</div>
+				<div class="desc">{s.description[$language]}</div>
+				<div class="pricerow">
+					<div class="price">{formatPrice(s.price)}</div>
+					<button class="btn-add" on:click={() => openSheet(s)} disabled={!s.isAvailable}>Book</button>
+				</div>
+			</div>
+		</div>
+	{/each}
+</div>
+
+</div><!-- /page-enter -->
+</main>
+<BottomNav />
+</div><!-- /shell -->
+
+<!-- ── Bottom sheet ─────────────────────────────────────────── -->
+{#if sheetItem}
+	<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+	<div class="sheet-mask show" on:click={closeSheet}></div>
+	<div class="sheet show" role="dialog" aria-modal="true">
+		<div class="grabber"></div>
+		<div class="sheet-body">
+			<div class="big-thumb">// {sheetItem.name.en.toUpperCase()} ·· wellness ritual</div>
+			<h3>{sheetItem.name[$language]}</h3>
+			<p class="sheet-desc">{sheetItem.description[$language]} · <strong>{sheetItem.duration} min</strong></p>
+
+			<div class="field-block">
+				<span class="lbl">Location</span>
+				<div class="seg">
+					<button class:on={sheetLocation === 'inRoom'} on:click={() => sheetLocation = 'inRoom'}>In-room</button>
+					<button class:on={sheetLocation === 'atSpa'} on:click={() => sheetLocation = 'atSpa'}>At the Spa</button>
+				</div>
+			</div>
+
+			<div class="field-block">
+				<span class="lbl">Date</span>
+				<div class="seg">
+					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>Today</button>
+					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>Tomorrow</button>
+				</div>
+			</div>
+
+			<div class="field-block">
+				<span class="lbl">Available time slots</span>
+				<div class="slot-grid">
+					{#each TIME_SLOTS as slot}
+						<button
+							class="slot"
+							class:on={sheetTime === slot}
+							disabled={TAKEN.includes(slot)}
+							on:click={() => sheetTime = slot}
+						>{slot}</button>
+					{/each}
+				</div>
+			</div>
+
+			<div class="qty-row">
+				<span class="lbl">Guests</span>
+				<div class="qty">
+					<button on:click={() => sheetGuests = Math.max(1, sheetGuests - 1)} disabled={sheetGuests <= 1}>−</button>
+					<span class="num">{sheetGuests}</span>
+					<button on:click={() => sheetGuests = Math.min(4, sheetGuests + 1)} disabled={sheetGuests >= 4}>+</button>
+				</div>
+			</div>
+
+			<div class="sheet-cta">
+				<div class="total-prev">{formatPrice(sheetItem.price * sheetGuests)}</div>
+				<button class="btn btn-primary" on:click={submitBooking} disabled={!sheetTime}>
+					Book treatment
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
 
 <style>
-	.spa { padding: 24px; }
-	.page-title { font-size: 26px; font-weight: 700; margin-bottom: 24px; }
-	.service-list { display: flex; flex-direction: column; gap: 16px; }
-	.service-card {
-		display: flex;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: 16px;
+	.shell { height: 100vh; display: flex; flex-direction: column; background: var(--cream); }
+	.main { flex: 1; overflow-y: auto; }
+
+	/* ── Page hero ─────────────────────────────────────────────── */
+	.page-hero { padding: 22px 28px 6px; }
+	.eyebrow {
+		font-size: 11px; letter-spacing: .18em;
+		text-transform: uppercase; color: var(--gold-600);
+		font-weight: 600; margin-bottom: 6px;
+	}
+	.page-hero h2 {
+		margin: 0 0 6px;
+		font-family: var(--font-display);
+		font-size: 36px; line-height: 1.05; font-weight: 500;
+	}
+	.page-hero p { margin: 0; color: var(--ink-3); font-size: 13.5px; line-height: 1.55; }
+
+	/* ── Spa list ──────────────────────────────────────────────── */
+	.spa-list { padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 14px; }
+
+	.spa-card {
+		background: var(--white);
+		border: 1px solid var(--line);
+		border-radius: var(--r-lg);
+		padding: 16px;
+		box-shadow: var(--sh-1);
+		display: flex; gap: 14px;
+	}
+	.spa-thumb {
+		width: 96px; height: 96px; flex-shrink: 0;
+		border-radius: var(--r-md);
 		overflow: hidden;
+		background:
+			repeating-linear-gradient(135deg, rgba(200,164,92,.18) 0 6px, rgba(200,164,92,.06) 6px 12px),
+			var(--gold-50);
+		display: grid; place-items: center;
+		color: var(--gold-600);
+		border: 1px solid rgba(200,164,92,.25);
 	}
-	.service-card__img { width: 140px; object-fit: cover; flex-shrink: 0; }
-	.service-card__body { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-	.service-card__name { font-size: 18px; font-weight: 700; }
-	.service-card__desc { font-size: 13px; color: var(--color-text-muted); flex: 1; }
-	.service-card__meta { display: flex; justify-content: space-between; color: var(--color-text-muted); font-size: 13px; }
-	.price { color: var(--color-primary); font-weight: 600; }
-	.btn-book {
-		align-self: flex-start;
-		background: var(--color-primary);
-		color: #000;
-		font-weight: 700;
-		padding: 10px 20px;
-		border-radius: 10px;
-		font-size: 14px;
+	.spa-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+	.spa-thumb svg { width: 32px; height: 32px; }
+
+	.info { flex: 1; min-width: 0; }
+	.name { font: 600 16px/1.25 var(--font-ui); margin: 0 0 4px; color: var(--ink); }
+	.name .cn { display: block; font-weight: 500; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+
+	.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+	.pill {
+		font: 500 11px/1 var(--font-ui);
+		color: var(--ink-2); background: var(--cream-2);
+		padding: 5px 9px; border-radius: var(--r-pill);
+		display: inline-flex; align-items: center; gap: 5px;
 	}
-	.btn-book:disabled { opacity: 0.4; }
-	.booking-overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0,0,0,0.7);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 300;
+	.pill svg { width: 11px; height: 11px; opacity: .7; }
+	.pill.success { background: rgba(31,138,91,.1); color: var(--ok); }
+	.pill.warn { background: rgba(196,90,61,.1); color: var(--warn); }
+
+	.desc {
+		margin: 4px 0 10px;
+		font-size: 12.5px; color: var(--ink-3); line-height: 1.45;
+		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	}
-	.booking-modal {
-		background: var(--color-surface);
-		border-radius: 20px;
-		padding: 32px;
-		width: 480px;
-		display: flex;
-		flex-direction: column;
-		gap: 20px;
+	.pricerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+	.price { font: 600 15px/1 var(--font-ui); color: var(--navy-800); }
+
+	.btn-add {
+		background: var(--navy-800); color: #fff; border: none; cursor: pointer;
+		border-radius: var(--r-pill);
+		padding: 8px 16px; min-height: 36px;
+		font: 600 12.5px/1 var(--font-ui);
+		display: inline-flex; align-items: center; gap: 6px;
+		transition: background .15s, transform .08s;
 	}
-	.btn-confirm {
-		background: var(--color-primary);
-		color: #000;
-		font-weight: 700;
-		padding: 14px;
-		border-radius: 12px;
-		font-size: 16px;
+	.btn-add:hover { background: var(--navy-700); }
+	.btn-add:active { transform: scale(.97); }
+	.btn-add:disabled { opacity: .4; cursor: not-allowed; }
+
+	/* ── Bottom sheet ──────────────────────────────────────────── */
+	.sheet-mask {
+		position: fixed; inset: 0;
+		background: rgba(15,26,48,.45);
+		z-index: 80; opacity: 0; pointer-events: none;
+		transition: opacity .25s;
 	}
-	.btn-cancel { color: var(--color-text-muted); padding: 8px; }
+	.sheet-mask.show { opacity: 1; pointer-events: auto; }
+
+	.sheet {
+		position: fixed; left: 0; right: 0; bottom: 0;
+		background: var(--cream);
+		border-radius: 28px 28px 0 0;
+		z-index: 81;
+		transform: translateY(100%);
+		transition: transform .3s cubic-bezier(.2,.8,.2,1);
+		max-height: 86%;
+		display: flex; flex-direction: column;
+		box-shadow: 0 -24px 60px rgba(0,0,0,.25);
+	}
+	.sheet.show { transform: translateY(0); }
+
+	.grabber {
+		width: 40px; height: 4px; border-radius: 2px;
+		background: var(--line-2);
+		margin: 12px auto 0; flex-shrink: 0;
+	}
+	.sheet-body {
+		padding: 16px 28px 28px;
+		overflow-y: auto;
+	}
+
+	.big-thumb {
+		width: 100%; height: 200px;
+		border-radius: var(--r-lg);
+		background: repeating-linear-gradient(135deg, var(--cream-2) 0 12px, var(--cream) 12px 24px);
+		display: grid; place-items: center;
+		color: var(--ink-3);
+		font: 500 11px/1.4 var(--font-mono);
+		text-align: center;
+		border: 1px solid var(--line-2);
+		margin-bottom: 20px;
+	}
+	.sheet-body h3 {
+		margin: 4px 0 4px;
+		font-family: var(--font-display);
+		font-size: 28px; font-weight: 500;
+	}
+	.sheet-desc { color: var(--ink-2); font-size: 14px; line-height: 1.55; margin: 0 0 18px; }
+
+	.field-block { margin-bottom: 16px; }
+	.field-block .lbl, .qty-row .lbl {
+		font: 500 11px/1 var(--font-ui);
+		letter-spacing: .14em; text-transform: uppercase;
+		color: var(--ink-3); margin-bottom: 10px; display: block;
+	}
+
+	.seg {
+		display: flex; padding: 4px;
+		background: var(--cream-2); border-radius: var(--r-pill);
+	}
+	.seg button {
+		flex: 1; border: none; background: transparent;
+		padding: 8px 10px; min-height: 36px;
+		border-radius: var(--r-pill);
+		font: 500 13px/1 var(--font-ui); color: var(--ink-2);
+		cursor: pointer; transition: all .15s;
+	}
+	.seg button.on {
+		background: var(--white); color: var(--navy-800);
+		box-shadow: var(--sh-1); font-weight: 600;
+	}
+
+	.slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+	.slot {
+		border: 1px solid var(--line); background: var(--white);
+		border-radius: var(--r-md);
+		padding: 10px 4px;
+		font: 500 13px/1 var(--font-ui); color: var(--ink-2);
+		cursor: pointer; min-height: 40px; transition: all .15s;
+	}
+	.slot:hover { border-color: var(--gold-400); }
+	.slot.on { background: var(--navy-800); color: #fff; border-color: var(--navy-800); }
+	.slot:disabled {
+		color: var(--ink-3); background: var(--cream-2); cursor: not-allowed;
+		text-decoration: line-through; text-decoration-color: var(--ink-3);
+	}
+
+	.qty-row {
+		display: flex; align-items: center; justify-content: space-between;
+		padding: 14px 0;
+		border-top: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+		margin-bottom: 18px;
+	}
+	.qty { display: flex; align-items: center; gap: 14px; }
+	.qty button {
+		width: 44px; height: 44px; border-radius: 50%;
+		border: 1px solid var(--line); background: var(--white);
+		font: 500 20px/1 var(--font-ui); color: var(--navy-800);
+		cursor: pointer; display: grid; place-items: center;
+		transition: all .15s;
+	}
+	.qty button:hover:not(:disabled) { border-color: var(--gold-500); color: var(--gold-600); }
+	.qty button:active { transform: scale(.95); }
+	.qty button:disabled { color: var(--ink-3); cursor: not-allowed; }
+	.qty .num { font-weight: 600; font-size: 18px; min-width: 28px; text-align: center; }
+
+	.sheet-cta {
+		display: flex; align-items: center; justify-content: space-between; gap: 12px;
+	}
+	.sheet-cta .btn { flex: 1; }
+	.total-prev {
+		font-family: var(--font-display);
+		font-size: 22px; font-weight: 500; color: var(--navy-800);
+	}
 </style>

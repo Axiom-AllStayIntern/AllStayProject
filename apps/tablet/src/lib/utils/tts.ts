@@ -1,19 +1,30 @@
-let currentAudio: HTMLAudioElement | null = null;
-// Resolves the in-flight speakText promise when stopSpeaking is called mid-playback.
-let abortPlayback: (() => void) | null = null;
+let currentAudio:   HTMLAudioElement | null = null;
+let abortPlayback:  (() => void) | null = null;
+let fetchAbort:     AbortController | null = null;
 
-/** Stop any currently playing TTS. The awaited speakText() call will resolve immediately. */
+/** Stop any in-flight TTS fetch, audio playback, or Web Speech utterance. */
 export function stopSpeaking() {
+	// 1. Abort the in-flight fetch / blob read
+	if (fetchAbort) {
+		fetchAbort.abort();
+		fetchAbort = null;
+	}
+	// 2. Stop HTMLAudioElement playback
 	if (currentAudio) {
 		currentAudio.pause();
 		currentAudio = null;
 	}
+	// 3. Resolve the awaited speakText promise
 	abortPlayback?.();
 	abortPlayback = null;
+	// 4. Stop Web Speech fallback if active
+	if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+		window.speechSynthesis.cancel();
+	}
 }
 
 export function isSpeaking(): boolean {
-	return currentAudio !== null && !currentAudio.paused;
+	return (currentAudio !== null && !currentAudio.paused) || !!fetchAbort;
 }
 
 /**
@@ -24,42 +35,64 @@ export function isSpeaking(): boolean {
 export async function speakText(text: string): Promise<void> {
 	stopSpeaking();
 
-	try {
-		const res = await fetch('/api/tts', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ text })
-		});
+	return new Promise<void>(async (resolve) => {
+		// Register abort handler immediately — before any await —
+		// so stopSpeaking() can resolve this promise at any point.
+		abortPlayback = resolve;
 
-		if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+		try {
+			const ac = new AbortController();
+			fetchAbort = ac;
 
-		const blob = await res.blob();
-		const url = URL.createObjectURL(blob);
-		const audio = new Audio(url);
-		currentAudio = audio;
+			const res = await fetch('/api/tts', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text }),
+				signal: ac.signal
+			});
+			fetchAbort = null;
 
-		await new Promise<void>((resolve) => {
+			if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+
+			const blob = await res.blob();
+
+			// Check if we were stopped while reading the blob
+			if (!abortPlayback) { resolve(); return; }
+
+			const url   = URL.createObjectURL(blob);
+			const audio = new Audio(url);
+			currentAudio = audio;
+
 			const finish = () => {
 				URL.revokeObjectURL(url);
 				currentAudio = null;
 				abortPlayback = null;
 				resolve();
 			};
-			abortPlayback = finish;
-			audio.onended = finish;
-			audio.onerror = finish;
+			abortPlayback   = finish;
+			audio.onended   = finish;
+			audio.onerror   = finish;
 			audio.play().catch(finish);
-		});
-	} catch {
-		// Fallback: Web Speech API
-		fallbackSpeak(text);
-	}
+		} catch (err: unknown) {
+			fetchAbort = null;
+			const isAbort = err instanceof Error && err.name === 'AbortError';
+			if (isAbort) {
+				// Already resolved by stopSpeaking via abortPlayback
+				return;
+			}
+			// Network/parse error → try Web Speech fallback
+			fallbackSpeak(text, resolve);
+		}
+	});
 }
 
-function fallbackSpeak(text: string) {
-	if (!('speechSynthesis' in window)) return;
+function fallbackSpeak(text: string, onDone: () => void) {
+	if (!('speechSynthesis' in window)) { onDone(); return; }
 	window.speechSynthesis.cancel();
-	const utt = new SpeechSynthesisUtterance(text);
-	utt.rate = 1.0;
+	const utt     = new SpeechSynthesisUtterance(text);
+	utt.rate      = 1.0;
+	utt.onend     = () => { abortPlayback = null; onDone(); };
+	utt.onerror   = () => { abortPlayback = null; onDone(); };
+	abortPlayback = () => { window.speechSynthesis.cancel(); onDone(); };
 	window.speechSynthesis.speak(utt);
 }

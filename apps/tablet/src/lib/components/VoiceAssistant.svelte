@@ -13,9 +13,9 @@
 	type State = 'idle' | 'listening' | 'processing' | 'speaking';
 	let state: State = 'idle';
 
-	// ── Session timer (3-min max) ──────────────────────────────────────────────
-	const SESSION_MAX_MS  = 3 * 60 * 1_000;
-	const SESSION_WARN_MS = (2 * 60 + 50) * 1_000;
+	// ── Session timer (20-min max) ─────────────────────────────────────────────
+	const SESSION_MAX_MS  = 20 * 60 * 1_000;
+	const SESSION_WARN_MS = (19 * 60 + 50) * 1_000;
 	let sessionMaxTimer:  ReturnType<typeof setTimeout> | null = null;
 	let sessionWarnTimer: ReturnType<typeof setTimeout> | null = null;
 	let showSessionWarning = false;
