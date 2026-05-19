@@ -39,7 +39,8 @@ Response schema:
     "time": string | null,
     "partySize": number | null,
     "notes": string | null,
-    "query": string | null
+    "query": string | null,
+    "foodTag": "noodles" | "rice" | "sandwich" | "sweet" | "fruit" | "drinks" | null
   },
   "reply": "Your warm, concise conversational response in the same language as the guest"
 }
@@ -47,6 +48,8 @@ Response schema:
 Rules:
 - reply must be short (1–2 sentences), friendly, and in the guest's language
 - For order intent with no specific dish: reply should invite the guest to browse the menu, do NOT ask for a dish name
+- foodTag: set when the guest mentions a food category without naming a specific dish. Values: "noodles" (面食/面条/noodles), "rice" (米饭/炒饭/rice), "sandwich" (三明治/sandwich), "sweet" (甜点/松饼/pancake/dessert), "fruit" (水果/fruit), "drinks" (饮品/饮料/drinks/beverage). Leave null if a specific dish is named or the category is unclear.
+- When foodTag is set and no specific dish, naturally recommend the top pick for that category in your reply ("I'd especially recommend…" / "特别推荐…"): noodles→Mie Aceh/亚齐香料面 (new arrival), rice→Nasi Goreng/印尼炒饭, sandwich→Club Sandwich/俱乐部三明治, sweet→Pancake Stack/松饼塔, fruit→Tropical Fruit Platter/热带水果拼盘, drinks→Fresh Coconut Water/鲜椰青
 - Return ONLY the JSON object, nothing else
 - Use "switch_language" when the guest explicitly requests a language change: "speak English", "说中文", "switch to Chinese", "用英文", "换成中文", "please speak Chinese", etc. Reply naturally in the requested language confirming the switch.
 - Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
@@ -70,6 +73,15 @@ Examples:
   "no ice"            → "no ice"
   "素食"              → "素食"
   (nothing mentioned) → null`;
+
+const TAG_RECOMMENDATIONS: Record<string, string> = {
+	noodles:  'mie-aceh',   // newest featured noodle dish
+	rice:     'nasi',
+	sandwich: 'club',
+	sweet:    'pkx',
+	fruit:    'fruit',
+	drinks:   'coco',
+};
 
 export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
 	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
@@ -114,9 +126,11 @@ export async function processConversation(input: ConversationInput): Promise<Con
 			};
 		}
 		case 'order': {
-			// No specific dish → just navigate to the menu; agent only runs when a dish is named
+			// No specific dish → navigate to menu with optional tag + recommendation
 			if (!parsed.entities.dish) {
-				return { reply: parsed.reply, intent: 'order' };
+				const tag       = (parsed.entities.foodTag as string | null) ?? null;
+				const recommend = tag ? (TAG_RECOMMENDATIONS[tag] ?? null) : null;
+				return { reply: parsed.reply, intent: 'order', data: tag ? { tag, recommend } : undefined };
 			}
 			const si = parsed.entities.specialInstructions;
 			const result = await handleOrderIntent({

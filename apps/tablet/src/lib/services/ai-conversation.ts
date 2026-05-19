@@ -84,8 +84,17 @@ export async function processVoiceInput(
 	}
 
 	const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
-	const targetRoute = intent ? INTENT_ROUTES[intent] : undefined;
-	const shouldNavigate = targetRoute && currentPath !== targetRoute;
+	const baseRoute   = intent ? INTENT_ROUTES[intent] : undefined;
+	const navData     = data as Record<string, string> | null;
+	const tag         = navData?.tag;
+	const recommend   = navData?.recommend;
+	let targetRoute   = baseRoute;
+	if (baseRoute && tag) {
+		const qs = new URLSearchParams({ tag });
+		if (recommend) qs.set('recommend', recommend);
+		targetRoute = `${baseRoute}?${qs.toString()}`;
+	}
+	const shouldNavigate = targetRoute && (currentPath !== baseRoute || !!tag);
 
 	return {
 		text: reply,
