@@ -221,6 +221,33 @@ Use local `npm run dev` first. Docker Compose is present, but the production Doc
 
 ---
 
+## AI Voice Assistant (Realtime Conversation)
+
+The tablet ships a resident voice assistant (`VoiceAssistant.svelte`, mounted on all non-login pages via `+layout.svelte`). Pipeline:
+
+1. **Capture** — `MediaRecorder` + wake word (`wake-detector.ts`) + end-of-speech silence detection (`silence-vad.ts`).
+2. **STT** — `POST /api/stt` → OpenAI `whisper-1` (`verbose_json`, auto language detect), returns `{ text, detected }`.
+3. **Conversation (SSE stream)** — `POST /api/conversation` → `orchestrator.streamConversation()`. Claude (`AI_MODEL`, default `claude-sonnet-4-6`) returns one JSON object `{ intent, entities, reply }`; the `reply` field is streamed to the client character-by-character over SSE as it generates (`extractReplyProgress`).
+4. **Dispatch** — by `intent` to a domain agent: `order-agent`, `booking-agent` (spa / restaurant / transport), `info-agent`. Agents call the MCP servers over JSON-RPC (`ai/tools/mcp-client.ts`).
+5. **TTS** — `POST /api/tts` → OpenAI `tts-1` (voice `nova`), full-clip playback (`utils/tts.ts`).
+
+### Current status & known limitations (branch `feature/aki-realtime-stream`)
+
+| Area | State |
+| --- | --- |
+| Text reply | Streamed token-by-token over SSE ✅ |
+| Voice I/O | **Not streamed** — STT is batch; TTS plays only after the full clip synthesizes |
+| Languages | **`en` / `zh` only**; Indonesian is not wired yet (discarded at STT `LANG_MAP`) |
+| Model routing | None — a single model handles all languages |
+| Business data | **Mock** — e.g. `check_spa_availability` returns hardcoded slots, `create_spa_booking` a mock code (`// TODO: query/INSERT Cakrasoft PMS`) |
+| SPA booking paths | The `/spa` touch UI uses its **own** hardcoded time slots, separate from the voice → MCP path |
+| Slot validation | `booking-agent` does **not** validate the chosen slot against availability; its confirmation reply is hardcoded English |
+| Intent output | Parsed from raw JSON text (`parseRaw`); not yet tool/function-calling |
+
+See [AllStay-SPA-技术方案.html](./docs/AllStay-SPA-技术方案.html) for the SPA-line technical design and implementation plan.
+
+---
+
 ## Project Structure
 
 ```text
@@ -229,7 +256,13 @@ AllStayProject/
     tablet/               # SvelteKit tablet app
       src/
         lib/
+          ai/             # orchestrator, agents (order/booking/info), tools/mcp-client
+          components/     # VoiceAssistant.svelte, VoiceButton.svelte, ...
+          services/       # ai-conversation.ts (client STT→SSE→TTS flow)
+          utils/          # recorder, silence-vad, wake-detector, tts
+          stores/
         routes/
+          api/            # stt, tts, conversation, spa, booking, order, ...
         types/
     mcp-servers/          # MCP server workspace
       packages/

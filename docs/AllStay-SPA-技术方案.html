@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AllStay · AI 礼宾平台 SPA 主线技术方案 / Technical Design</title>
+<style>
+  :root{
+    --bg:#0f1720; --panel:#151f2b; --panel2:#1b2836; --ink:#e8eef4; --muted:#9db0c2;
+    --line:#26374a; --accent:#4fd1c5; --accent2:#7aa2f7; --warn:#f6c177; --good:#8bd5a0;
+    --chip:#22303f;
+    --maxw:960px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:linear-gradient(180deg,#0b1119,#0f1720 40%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;
+    line-height:1.7; font-size:16px;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:32px 22px 96px}
+  header.hero{padding:14px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+  h1{font-size:30px;line-height:1.25;margin:.35em 0 .15em}
+  .sub{color:var(--muted);font-size:15px}
+  .toolbar{position:sticky;top:0;z-index:10;background:rgba(11,17,25,.86);backdrop-filter:blur(8px);
+    display:flex;gap:10px;align-items:center;justify-content:space-between;
+    padding:10px 0;margin:0 0 12px;border-bottom:1px solid var(--line)}
+  .toolbar .meta{color:var(--muted);font-size:13px}
+  .langbtns{display:flex;gap:6px}
+  .langbtns button{cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+    padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;transition:.15s}
+  .langbtns button.active{background:var(--accent);color:#062018;border-color:var(--accent)}
+  h2{font-size:22px;margin:34px 0 6px;padding-top:10px;border-top:1px solid var(--line)}
+  h2 .n{color:var(--accent2);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:17px;margin:22px 0 4px;color:#cfe0f0}
+  p{margin:.5em 0}
+  ul{margin:.4em 0 .8em;padding-left:1.2em}
+  li{margin:.28em 0}
+  code{background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#cfe6df}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .tag{display:inline-block;background:var(--chip);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:2px 10px;font-size:12px;margin:2px 4px 2px 0}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0}
+  .step{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px}
+  .step b{color:var(--accent)}
+  .arrow{color:var(--muted)}
+  .callout{border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 10px 10px 0;padding:10px 14px;margin:12px 0}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.good{border-left-color:var(--good)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cfe0f0}
+  .muted{color:var(--muted)}
+  .en{display:none}
+  body.en .zh{display:none}
+  body.en .en{display:block}
+  body.en li.en,body.en span.en{display:inline}
+  .resume{background:linear-gradient(180deg,#12202b,#101a24);border:1px solid var(--accent2)}
+  .resume code{background:#0d1a24}
+  .pill{font-size:11px;color:#062018;background:var(--accent);border-radius:6px;padding:1px 7px;font-weight:700}
+  footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--accent2)}
+  .legend{font-size:12px;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body class="zh">
+<div class="wrap">
+
+  <div class="toolbar">
+    <span class="meta">
+      <span class="zh">AllStay · 内部技术方案（草稿 v1）</span>
+      <span class="en">AllStay · Internal Technical Design (draft v1)</span>
+    </span>
+    <span class="langbtns">
+      <button id="btn-zh" class="active" onclick="setLang('zh')">中文</button>
+      <button id="btn-en" onclick="setLang('en')">EN</button>
+    </span>
+  </div>
+
+  <header class="hero">
+    <div class="kicker">AI Concierge Platform · Bali Resort</div>
+    <h1>
+      <span class="zh">AllStay 智能礼宾平台 —— SPA 服务主线技术方案</span>
+      <span class="en">AllStay AI Concierge — SPA Service Line Technical Design</span>
+    </h1>
+    <div class="sub">
+      <span class="zh">面向巴厘岛度假村游客与员工的多语种、可执行、文化恰当的语音礼宾 Agent。本文以 SPA 预约为主工作流，阐述定位、架构、关键设计、评测与技术亮点。</span>
+      <span class="en">A multilingual, action-capable, culturally-appropriate voice concierge agent for Bali resort guests and staff. This document uses the SPA booking flow as the primary workstream to lay out positioning, architecture, key designs, evaluation, and technical highlights.</span>
+    </div>
+    <div style="margin-top:10px">
+      <span class="tag">SvelteKit + TypeScript</span>
+      <span class="tag">Voice / Realtime</span>
+      <span class="tag">Agent Orchestration</span>
+      <span class="tag">MCP</span>
+      <span class="tag">RAG + Tool-calling</span>
+      <span class="tag">Multilingual · Bahasa Indonesia</span>
+      <span class="tag">Eval Harness</span>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <h2><span class="n">01</span><span class="zh">项目背景与定位</span><span class="en">Background & Positioning</span></h2>
+  <div class="zh">
+    <p>巴厘岛度假村是一个<b>双语言、双人群</b>的服务场景。一边是国际游客（中国、澳洲、欧洲、中东等），期望 24 小时用母语即时获得服务与建议；另一边是本地印尼/巴厘员工，工作方式传统、数字化门槛较低，却要服务这些游客。中间的前台/礼宾长期是瓶颈：语言双向不通、响应慢，而餐饮、SPA、包车、tour 恰恰是度假村最重要的增值收入来源。</p>
+    <p><b>定位：</b>AllStay 不是一个聊天机器人，而是一个<b>能办事的 AI 礼宾 Agent 平台</b>。关键词是"办事"——不是回答"SPA 几点开"，而是真正查到今日档期、完成预约、写回房号、并通知到 SPA 前台。它是 agentic 的：接入度假村真实业务系统去完成任务。</p>
+    <div class="callout">
+      <b>护城河不在模型，在"最后一公里"。</b>任何人都能用通用大模型加印尼语音。真正难且值钱的是三件通用模型替代不了的事：① 掌握<b>本店实时业务真相</b>（档期、价格、政策）；② <b>安全地执行动作</b>（下单、通知，带边界与确认）；③ <b>双人群适配</b>——游客侧要多语种，员工侧要真正的印尼 native。</div>
+  </div>
+  <div class="en">
+    <p>A Bali resort is a <b>dual-language, dual-audience</b> service setting. On one side are international guests (China, Australia, Europe, the Middle East) who expect instant service and advice in their own language, around the clock. On the other are local Indonesian/Balinese staff whose working style is traditional and whose digital-tool threshold is low — yet they must serve those guests. The front-desk / concierge function is a chronic bottleneck: two-way language barriers, slow response — while dining, SPA, transport and tours are exactly the resort's most important ancillary-revenue drivers.</p>
+    <p><b>Positioning:</b> AllStay is not a chatbot but an <b>action-capable AI concierge agent platform</b>. The operative word is "action" — not answering "when does the SPA open," but actually checking today's availability, completing the booking, writing it back to the room, and notifying the SPA desk. It is agentic: it plugs into the resort's real business systems to complete tasks.</p>
+    <div class="callout">
+      <b>The moat is not the model; it is the "last mile."</b> Anyone can wrap a general LLM with Indonesian speech. What is genuinely hard and valuable are three things a general model cannot supply: (1) command of <b>this property's live business truth</b> (availability, price, policy); (2) <b>safe action execution</b> (ordering, notifying, with boundaries and confirmation); (3) <b>dual-audience fit</b> — multilingual for guests, truly Indonesian-native for staff.</div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="n">02</span><span class="zh">目标用户与设计原则</span><span class="en">Target Users & Design Principles</span></h2>
+  <div class="grid">
+    <div class="card">
+      <h3><span class="zh">主用户：游客</span><span class="en">Primary: Guests</span></h3>
+      <div class="zh"><p>多语种（中/英/印尼…）、语音优先、即时服务。对游客不做"本地化成印尼语"，而是<b>用其母语服务</b>，并叠加文化恰当性（如清真饮食标注、按国籍调整语气）。</p></div>
+      <div class="en"><p>Multilingual (ZH/EN/ID…), voice-first, instant service. For guests we do <b>not</b> "localize into Indonesian"; we serve them <b>in their own language</b>, layered with cultural appropriateness (e.g. halal labeling, tone adapted to nationality).</p></div>
+    </div>
+    <div class="card">
+      <h3><span class="zh">次用户：员工</span><span class="en">Secondary: Staff</span></h3>
+      <div class="zh"><p>本地员工效率低，部分源于传统工作习惯——这既是短板也是特色，不能硬改。原则是<b>包裹而非替代（wrap, don't replace）</b>：在<b>不大量干涉习惯、不抬高门槛</b>的前提下提效。真正的"印尼 native"最该落在员工侧。</p></div>
+      <div class="en"><p>Local staff efficiency is low, partly rooted in traditional work habits — both a weakness and a character trait, not to be forcibly reworked. The principle is <b>wrap, don't replace</b>: improve efficiency <b>without heavily disrupting habits or raising the barrier</b>. The genuine "Indonesian-native" need lives mostly on the staff side.</p></div>
+    </div>
+  </div>
+  <div class="callout good">
+    <span class="zh"><b>核心设计原则 — 包裹而非替代。</b>员工侧不推一套新系统让他们学。游客侧 Agent 把请求接住、结构化、翻译好，再以员工<b>已在用</b>的形式（Bahasa 的 WhatsApp 消息 / 打印小票 / 简单通知）把预填好的工单推给他们，操作员只需在熟悉的 <code>Cakrasoft</code> 里点一下确认。AI 干"想、翻、整理"的活，人干"最后低风险的一下"。</span>
+    <span class="en"><b>Core principle — wrap, don't replace.</b> Don't hand staff a new system to learn. The guest-facing agent captures, structures, and translates the request, then pushes a pre-filled work order to staff <b>in the form they already use</b> (a Bahasa WhatsApp message / printed ticket / simple notification); the operator just confirms it in the familiar <code>Cakrasoft</code>. The AI does the "thinking, translating, structuring"; the human does the final low-risk keystroke.</span>
+  </div>
+
+  <!-- 3 -->
+  <h2><span class="n">03</span><span class="zh">系统架构：现状与目标</span><span class="en">System Architecture: Current & Target</span></h2>
+  <h3><span class="zh">现有实时语音链路（feature/aki-realtime-stream）</span><span class="en">Current voice pipeline (feature/aki-realtime-stream)</span></h3>
+  <div class="flow">
+    <span class="step"><b>VoiceAssistant.svelte</b><br><span class="zh">常驻 · 录音</span><span class="en">resident · capture</span></span>
+    <span class="arrow">→</span>
+    <span class="step"><b>silence-vad.ts</b><br><span class="zh">静音检测</span><span class="en">silence VAD</span></span>
+    <span class="arrow">→</span>
+    <span class="step"><b>/api/stt</b><br>whisper-1</span>
+    <span class="arrow">→</span>
+    <span class="step"><b>/api/conversation</b></span>
+    <span class="arrow">→</span>
+    <span class="step"><b>orchestrator.ts</b><br><span class="zh">Claude 出 JSON</span><span class="en">Claude → JSON</span></span>
+    <span class="arrow">→</span>
+    <span class="step"><b>agents</b><br>order / booking / info</span>
+  </div>
+  <div class="zh">
+    <p>Orchestrator 让 Claude 返回结构化结果 <code>{ intent, entities, reply }</code>，再按 <code>intent</code> 分发：点餐→<code>order-agent</code>，预约→<code>booking-agent</code>，信息问答→<code>info-agent</code>。这套"VAD → STT → LLM 意图编排 → 专用 agent"是业界标准的语音 Agent 结构，职责分离清晰。</p>
+  </div>
+  <div class="en">
+    <p>The orchestrator has Claude return a structured result <code>{ intent, entities, reply }</code>, then dispatches by <code>intent</code>: dining → <code>order-agent</code>, booking → <code>booking-agent</code>, Q&A → <code>info-agent</code>. This "VAD → STT → LLM intent orchestration → specialized agent" pattern is the industry-standard voice-agent structure with clean separation of concerns.</p>
+  </div>
+  <div class="callout warn">
+    <span class="zh"><b>基于代码的现状核对（3 点）：</b><br>
+    ① <b>文字回复已是真流式（此处更正早前基于分支名的猜测）：</b><code>orchestrator.ts</code> 的 <code>streamConversation</code> 流式读取 Claude，并用 <code>extractReplyProgress</code> 从<b>尚未闭合的 JSON</b> 中增量抽取 <code>reply</code> 字段，经 SSE（<code>conversation/+server.ts</code> 的 <code>t:'chunk'</code>）推给前端边收边显示。"从流式 JSON 中增量提取字段"是不常见但扎实的技巧，属于亮点。<br>
+    ② <b>但语音两端未流式：</b>STT 是整段（<code>whisper-1</code>，录完再转）；TTS（<code>tts.ts</code> → <code>tts-1</code>）用 <code>await res.blob()</code> 取<b>整段音频</b>再播——文字在屏幕上逐字出，声音却要等整句合成完才响，这是语音优先场景最大的感知延迟。且 schema 把 <code>reply</code> 放最后，Claude 先吐 <code>intent/entities</code> 才轮到 <code>reply</code>，流式收益被前段"哑等"抵消一截。<br>
+    ③ <b>JSON 仍靠文本解析：</b><code>parseRaw</code> 解析失败时会直接把原始串当回复丢给用户（<code>return { reply: raw }</code>）。建议迁移到 <b>tool / function calling</b> 或结构化输出，并把 <code>reply</code> 前置或与结构字段分离。<br>
+    <b>取舍说明：</b>模块化管线（STT+LLM+TTS 分开）相比端到端语音模型（如 OpenAI Realtime）延迟更高，但对本项目<b>是对的选择</b>——要在中间插业务 grounding、约束校验、本地化模型路由，端到端语音模型是黑盒插不进去。用延迟换可控性。</span>
+    <span class="en"><b>Code-grounded status check (3 points):</b><br>
+    (1) <b>Text reply IS truly streamed (correcting my earlier guess based on the branch name):</b> <code>orchestrator.ts</code>'s <code>streamConversation</code> streams from Claude and uses <code>extractReplyProgress</code> to incrementally pull the <code>reply</code> field out of the <b>still-unclosed JSON</b>, pushed over SSE (<code>t:'chunk'</code> in <code>conversation/+server.ts</code>) and rendered as it arrives. "Incrementally extracting a field from streaming JSON" is an uncommon but solid technique — a genuine highlight.<br>
+    (2) <b>But neither voice end streams:</b> STT is batch (<code>whisper-1</code>, record-then-transcribe); TTS (<code>tts.ts</code> → <code>tts-1</code>) does <code>await res.blob()</code> for the <b>whole audio</b> before playing — text streams to the screen, yet the voice waits for the full sentence to synthesize, the biggest perceived latency for a voice-first product. Also, the schema puts <code>reply</code> last, so Claude emits <code>intent/entities</code> first; the streaming benefit is partly cancelled by that upfront wait.<br>
+    (3) <b>JSON still parsed from text:</b> on parse failure <code>parseRaw</code> dumps the raw string to the user as the reply (<code>return { reply: raw }</code>). Move to <b>tool / function calling</b> or structured outputs, and put <code>reply</code> first or separate it from the structured fields.<br>
+    <b>Trade-off note:</b> the modular pipeline (separate STT+LLM+TTS) costs latency vs an end-to-end speech model (e.g. OpenAI Realtime), but is the <b>right</b> choice here — we must inject business grounding, constraint checks, and localization routing in the middle, which a black-box end-to-end speech model cannot accommodate. Latency traded for control.</span>
+  </div>
+
+  <h3><span class="zh">目标架构（分层）</span><span class="en">Target architecture (layered)</span></h3>
+  <table>
+    <tr><th><span class="zh">层</span><span class="en">Layer</span></th><th><span class="zh">职责</span><span class="en">Responsibility</span></th></tr>
+    <tr><td><span class="zh">语音 I/O</span><span class="en">Voice I/O</span></td><td><span class="zh">流式 STT、流式 TTS、VAD、barge-in、语言检测</span><span class="en">Streaming STT/TTS, VAD, barge-in, language detection</span></td></tr>
+    <tr><td><span class="zh">编排 Orchestrator</span><span class="en">Orchestrator</span></td><td><span class="zh">意图/实体（tool-calling）、对话状态、模型路由</span><span class="en">Intent/entities (tool-calling), dialog state, model routing</span></td></tr>
+    <tr><td><span class="zh">Agent 层</span><span class="en">Agent layer</span></td><td><span class="zh">SPA / dining / info 等领域 agent，负责多轮任务完成</span><span class="en">Domain agents (SPA / dining / info) driving multi-turn task completion</span></td></tr>
+    <tr><td><span class="zh">约束与策略层</span><span class="en">Constraint & policy</span></td><td><span class="zh">清真/过敏/档期/预约规则的结构化校验</span><span class="en">Structured validation of halal/allergy/availability/booking rules</span></td></tr>
+    <tr><td><span class="zh">业务/PMS 适配层</span><span class="en">Business / PMS adapter</span></td><td><span class="zh">经 MCP 暴露业务能力；mock 数据实现，可切真实 Cakrasoft</span><span class="en">Business capabilities via MCP; mock-data impl, swappable to real Cakrasoft</span></td></tr>
+    <tr><td><span class="zh">员工桥接层</span><span class="en">Staff bridge</span></td><td><span class="zh">把结构化工单以低门槛形式推送给员工，human-in-the-loop</span><span class="en">Push structured work orders to staff in low-barrier form, human-in-the-loop</span></td></tr>
+  </table>
+
+  <!-- 4 -->
+  <h2><span class="n">04</span><span class="zh">SPA 主工作流详解</span><span class="en">SPA Core Workflow</span></h2>
+  <div class="zh"><p>SPA 比点餐更能体现<b>约束管理 + 多语种 + 上下文</b>：它有时间档期（资源约束）、疗程与理疗师（推荐/匹配）、预约规则（时长/前置时间/取消政策），且高度依赖上下文（客人几位、偏好、房号、语言）。完整链路：</p></div>
+  <div class="en"><p>SPA showcases <b>constraint management + multilingual + context</b> better than dining: it has time slots (resource constraints), treatments and therapists (recommendation/matching), booking rules (duration/lead time/cancellation), and is highly context-dependent (party size, preferences, room, language). Full flow:</p></div>
+  <div class="flow">
+    <span class="step">1 · <span class="zh">推荐</span><span class="en">Recommend</span></span><span class="arrow">→</span>
+    <span class="step">2 · <span class="zh">介绍</span><span class="en">Describe</span></span><span class="arrow">→</span>
+    <span class="step">3 · <span class="zh">查空档</span><span class="en">Availability</span></span><span class="arrow">→</span>
+    <span class="step">4 · <span class="zh">下单</span><span class="en">Book</span></span><span class="arrow">→</span>
+    <span class="step">5 · <span class="zh">通知员工</span><span class="en">Notify staff</span></span>
+  </div>
+  <table>
+    <tr><th><span class="zh">阶段</span><span class="en">Stage</span></th><th><span class="zh">能力要求</span><span class="en">Capability</span></th><th><span class="zh">数据/工具</span><span class="en">Data/Tool</span></th></tr>
+    <tr><td><span class="zh">1 推荐</span><span class="en">1 Recommend</span></td><td><span class="zh">按偏好/人数/时段/预算做疗程匹配与解释</span><span class="en">Match & explain treatments by preference/party/time/budget</span></td><td>RAG · spa MCP</td></tr>
+    <tr><td><span class="zh">2 介绍</span><span class="en">2 Describe</span></td><td><span class="zh">准确介绍疗程内容、时长、禁忌（如孕期/伤病）</span><span class="en">Accurately describe content, duration, contraindications (pregnancy/injury)</span></td><td>RAG · <span class="zh">约束层</span><span class="en">constraints</span></td></tr>
+    <tr><td><span class="zh">3 查空档</span><span class="en">3 Availability</span></td><td><span class="zh">按疗程时长、理疗师、房态实时求解可行档期</span><span class="en">Solve feasible slots by duration, therapist, room status</span></td><td>spa MCP · PMS</td></tr>
+    <tr><td><span class="zh">4 下单</span><span class="en">4 Book</span></td><td><span class="zh">工具调用创建预约，写回房号，二次确认</span><span class="en">Tool-call to create booking, write to room, confirm</span></td><td>booking-agent</td></tr>
+    <tr><td><span class="zh">5 通知</span><span class="en">5 Notify</span></td><td><span class="zh">生成 Bahasa 工单推送 SPA 前台，人确认落 Cakrasoft</span><span class="en">Generate Bahasa work order to SPA desk; human confirms into Cakrasoft</span></td><td><span class="zh">员工桥接</span><span class="en">staff bridge</span></td></tr>
+  </table>
+
+  <!-- 5 -->
+  <h2><span class="n">05</span><span class="zh">关键设计</span><span class="en">Key Designs</span></h2>
+
+  <h3>① <span class="zh">PMS 适配层（防腐层）</span><span class="en">PMS adapter (anti-corruption layer)</span></h3>
+  <div class="zh"><p><code>Cakrasoft</code> 是以 Windows/云为主的传统印尼 PMS，覆盖前台、预订、房态、客房、POS、账务，但大概率无开放 API，且当前只能用模拟数据。对策：定义一套<b>干净的业务接口</b>（如 <code>getSpaAvailability()</code>、<code>createSpaBooking()</code>、<code>postChargeToRoom()</code>），先用 mock 实现，真实对接时把底层换成 Cakrasoft 适配器即可。这不是"连不上所以造假数据"，而是<b>可插拔、mock 驱动开发、屏蔽底层差异</b>的成熟工程做法。</p></div>
+  <div class="en"><p><code>Cakrasoft</code> is a traditional Windows/cloud Indonesian PMS covering front office, reservations, room status, housekeeping, POS and accounting — but it likely has no open API, and only mock data is available for now. Approach: define a <b>clean business interface</b> (e.g. <code>getSpaAvailability()</code>, <code>createSpaBooking()</code>, <code>postChargeToRoom()</code>), implement it with mocks first, and swap the backend to a Cakrasoft adapter when real integration lands. This is not "faking data because we can't connect"; it is the mature engineering pattern of a <b>pluggable, mock-driven, difference-shielding</b> anti-corruption layer.</p></div>
+
+  <h3>② <span class="zh">约束管理层</span><span class="en">Constraint management layer</span></h3>
+  <div class="zh"><p>清真、过敏、疗程禁忌、档期冲突、预约前置时间、取消政策——这些<b>不能靠 prompt 祈祷</b>，要做成结构化校验。Agent 产出候选方案后，先过约束校验器，不合规的选项被过滤或标注理由，再回给用户。这既是准确性保障，也是安全（避免给孕妇推荐禁忌疗程、给穆斯林推荐含猪肉套餐）。</p>
+  <p class="muted"><b>代码确认此层当前缺失：</b><code>booking-agent.ts</code> 的 <code>handleBookingIntent</code> 调用了 <code>check_spa_availability</code>，却<b>不使用返回的档期</b>，只要调用成功就直接 <code>create_spa_booking</code>——没有任何档期或约束校验；<code>serviceId/date/time</code> 全来自 Claude 抽取、可能为 null 也不校验。<code>create_spa_booking</code> 的 schema 甚至已支持 <code>therapist_gender_preference</code>，但 agent 没有传。</p></div>
+  <div class="en"><p>Halal, allergies, treatment contraindications, slot conflicts, booking lead time, cancellation policy — these <b>cannot be left to prompt hope</b>; they must be structured validation. After an agent produces candidates, they pass a constraint validator; non-compliant options are filtered or annotated with a reason before returning to the user. This is both an accuracy guarantee and a safety one (never recommend a contraindicated treatment to a pregnant guest, or a pork set to a Muslim guest).</p>
+  <p class="muted"><b>Code confirms this layer is currently missing:</b> <code>booking-agent.ts</code>'s <code>handleBookingIntent</code> calls <code>check_spa_availability</code> but <b>never uses the returned slots</b> — as long as the call succeeds it goes straight to <code>create_spa_booking</code>, with no slot/constraint validation; <code>serviceId/date/time</code> all come from Claude extraction and are used unvalidated even if null. <code>create_spa_booking</code>'s schema even supports <code>therapist_gender_preference</code>, but the agent never passes it.</p></div>
+
+  <h3>③ <span class="zh">多语种与本地化模型路由</span><span class="en">Multilingual & localization model routing</span></h3>
+  <div class="zh">
+    <p>已有开源印尼模型可用：<b>SEA-LION</b>（AI Singapore，v3 已到 70B）与基于它的 <b>Sahabat-AI</b>（GoTo，专攻印尼语/爪哇语/巽他语，约 44.8 万条印尼语指令微调）。均在 Hugging Face 开源，SEA-LION 亦提供 API。</p>
+    <p><b>关键：别把它当大脑。</b>它们是 8B/9B 级，复杂推理与 tool-calling 弱于 Claude/GPT。正确用法是<b>模型路由</b>：</p>
+    <ul>
+      <li>复杂推理、多轮编排、工具调用、非印尼语游客 → <b>Claude / GPT</b></li>
+      <li>地道印尼语表达、俚语、本地文化语气、员工侧、印尼籍客人 → <b>Sahabat-AI / SEA-LION</b></li>
+    </ul>
+    <p>"按语言/任务把请求路由到不同模型"本身就是一个硬技术亮点，也直接回答了"是否还只是翻译"——不是翻译，而是让最懂印尼语的模型来生成印尼语。</p>
+    <p class="muted"><b>现状（代码事实）：这一层还是空白地。</b>目前只有单一模型 <code>env.AI_MODEL ?? 'claude-sonnet-4-6'</code>，无任何路由；<code>ConversationInput.language</code> 与 STT 的 <code>detected</code> 都只有 <code>'en' | 'zh'</code>，印尼语在 STT 的 <code>LANG_MAP</code> 里不被识别、会被直接丢弃。所以"是否还只是翻译"的前提其实是——<b>印尼语根本还没接入</b>，这是干净的起点。另外更正文档早前把路由归到 Orchestrator 层：更干净的做法是把它做成<b>独立的模型网关/路由层（LLM gateway）</b>，供 orchestrator 与各 agent 调用；起步用<b>基于语言检测的规则路由</b>即可，无需上训练型路由器（RouteLLM 等）。</p>
+  </div>
+  <div class="en">
+    <p>Open Indonesian models already exist: <b>SEA-LION</b> (AI Singapore, v3 up to 70B) and <b>Sahabat-AI</b> built on it (GoTo, focused on Indonesian/Javanese/Sundanese, ~448k Indonesian instruction pairs). Both are open on Hugging Face; SEA-LION also offers an API.</p>
+    <p><b>Key: don't make it the brain.</b> They are 8B/9B class, weaker than Claude/GPT at complex reasoning and tool-calling. The right use is <b>model routing</b>:</p>
+    <ul>
+      <li>Complex reasoning, multi-turn orchestration, tool-calling, non-Indonesian guests → <b>Claude / GPT</b></li>
+      <li>Idiomatic Indonesian, slang, local cultural tone, staff side, Indonesian guests → <b>Sahabat-AI / SEA-LION</b></li>
+    </ul>
+    <p>"Routing requests to different models by language/task" is itself a strong technical highlight, and directly answers "is this still just translation" — no: it lets the model that best knows Indonesian generate the Indonesian.</p>
+  </div>
+
+  <h3>④ <span class="zh">实时语音流式</span><span class="en">Realtime voice streaming</span></h3>
+  <div class="zh"><p><b>LLM 文字回复已流式（见 §03）</b>，这里补齐语音两端。优先级最高的是 <b>TTS 按句流式</b>：把回复按句子切分，边合成边入队播放，而非现在的整段 <code>blob</code>；<code>tts.ts</code> 已有 <code>stopSpeaking()</code>，接上"用户开口即停播"即可实现 <b>barge-in</b>。其次是 <b>STT 流式部分转写</b>（可选，收益次于 TTS）。把 schema 的 <code>reply</code> 前置或分离，可让流式更早开始。</p></div>
+  <div class="en"><p><b>The LLM text reply already streams (see §03)</b>; this section fills in the two voice ends. Top priority is <b>sentence-level streaming TTS</b>: split the reply into sentences and enqueue-and-play as each synthesizes, instead of today's whole-blob fetch; <code>tts.ts</code> already has <code>stopSpeaking()</code>, so wiring "user speaks → stop playback" delivers <b>barge-in</b>. Second is <b>streaming partial STT</b> (optional, lower payoff than TTS). Putting <code>reply</code> first / separating it lets streaming start sooner.</p></div>
+
+  <h3>⑤ <span class="zh">员工桥接层（human-in-the-loop）</span><span class="en">Staff bridge (human-in-the-loop)</span></h3>
+  <div class="zh"><p>见 §02 设计原则。SPA 预约确认后，系统生成一条 <b>Bahasa 结构化工单</b>（疗程、时间、房号、人数、备注/禁忌），经员工<b>熟悉的渠道</b>送达 SPA 前台，操作员一键确认或录入 Cakrasoft。既提效，又尊重本地工作文化、不抬门槛。</p>
+  <p class="muted"><b>现状（代码事实）：员工桥接完全未实现。</b><code>create_spa_booking</code> 只返回一个 mock 确认码（<code>SPA-...</code>，注释里写着 <code>// TODO: INSERT into Cakrasoft PMS</code>），没有任何面向员工的通知。而且预约成功回复在 <code>booking-agent.ts</code> 里<b>硬编码英文</b>（"Your spa booking is confirmed!..."），不随客人语言变化——连现有的中文支持到这一步都会掉回英文。</p></div>
+  <div class="en"><p>See §02 principles. After a SPA booking is confirmed, the system generates a <b>structured Bahasa work order</b> (treatment, time, room, party size, notes/contraindications) delivered to the SPA desk via the staff's <b>familiar channel</b>; the operator confirms or enters it into Cakrasoft in one step. Efficiency gained while respecting local work culture and keeping the barrier low.</p>
+  <p class="muted"><b>Current (code fact): the staff bridge is entirely unimplemented.</b> <code>create_spa_booking</code> only returns a mock confirmation code (<code>SPA-...</code>, with a <code>// TODO: INSERT into Cakrasoft PMS</code> comment) and sends no staff notification. Also the booking-success reply is <b>hardcoded English</b> in <code>booking-agent.ts</code> ("Your spa booking is confirmed!..."), independent of guest language — even existing Chinese support drops back to English here.</p></div>
+
+  <!-- 6 -->
+  <h2><span class="n">06</span><span class="zh">评测体系（最稀缺的能力）</span><span class="en">Evaluation Harness (the rarest capability)</span></h2>
+  <div class="zh"><p>这是把"demo"变"工程"的分水岭，也是简历上最能打的一点。借鉴 <b>SEA-HELM</b>（AI Singapore × Stanford CRFM，覆盖 SEA 语言/文化/安全）与 <b>IndoCulture / IndoBias</b>（印尼文化理解与偏见基准）的思路，自建一套针对礼宾场景的评估集，三个维度：</p>
+    <ul>
+      <li><b>任务完成率：</b>给定意图，端到端是否正确完成预约（含约束满足）。</li>
+      <li><b>内容准确性：</b>回答是否与业务真相一致（不编造档期/价格/政策）。</li>
+      <li><b>文化恰当性：</b>语气、礼节、清真/宗教敏感、称谓是否得体（可用 LLM-as-judge + 人工抽检）。</li>
+    </ul>
+    <p>能说清"怎么衡量好坏、怎么迭代"的人极少——这正是从"调 API 的人"跃升到"AI 工程师"的关键。</p>
+  </div>
+  <div class="en"><p>This is the watershed from "demo" to "engineering," and the strongest résumé point. Borrowing from <b>SEA-HELM</b> (AI Singapore × Stanford CRFM, covering SEA languages/culture/safety) and <b>IndoCulture / IndoBias</b> (Indonesian cultural-understanding and bias benchmarks), build a concierge-scenario eval set on three axes:</p>
+    <ul>
+      <li><b>Task success rate:</b> given an intent, is the booking completed correctly end-to-end (constraints satisfied)?</li>
+      <li><b>Content accuracy:</b> does the answer match business truth (no fabricated slots/prices/policies)?</li>
+      <li><b>Cultural appropriateness:</b> tone, etiquette, halal/religious sensitivity, forms of address (LLM-as-judge + human spot-check).</li>
+    </ul>
+    <p>Very few people can articulate "how we measure quality and iterate" — precisely the leap from "someone who calls an API" to "an AI engineer."</p>
+  </div>
+
+  <!-- 7 -->
+  <h2><span class="n">07</span><span class="zh">技术难点与亮点</span><span class="en">Challenges & Highlights</span></h2>
+  <table>
+    <tr><th><span class="zh">难点</span><span class="en">Challenge</span></th><th><span class="zh">对应亮点 / 解法</span><span class="en">Highlight / Solution</span></th></tr>
+    <tr><td><span class="zh">生成准确、不编造</span><span class="en">Accurate, non-hallucinated output</span></td><td><span class="zh">RAG + tool-calling grounding；约束校验层兜底</span><span class="en">RAG + tool-calling grounding; constraint validator as backstop</span></td></tr>
+    <tr><td><span class="zh">真正本地化而非翻译</span><span class="en">True localization, not translation</span></td><td><span class="zh">多语种模型路由（Claude ↔ Sahabat-AI/SEA-LION）+ 文化 grounding</span><span class="en">Multilingual model routing (Claude ↔ Sahabat-AI/SEA-LION) + cultural grounding</span></td></tr>
+    <tr><td><span class="zh">低延迟语音体验</span><span class="en">Low-latency voice UX</span></td><td><span class="zh">流式 STT/LLM/TTS + barge-in</span><span class="en">Streaming STT/LLM/TTS + barge-in</span></td></tr>
+    <tr><td><span class="zh">无 API 的传统 PMS</span><span class="en">Legacy PMS without API</span></td><td><span class="zh">PMS 适配层：mock 驱动开发、可切真</span><span class="en">PMS adapter: mock-driven dev, swappable to real</span></td></tr>
+    <tr><td><span class="zh">不抬高员工门槛</span><span class="en">Low staff barrier</span></td><td><span class="zh">wrap-not-replace 桥接 + human-in-the-loop</span><span class="en">Wrap-not-replace bridge + human-in-the-loop</span></td></tr>
+    <tr><td><span class="zh">如何证明"好"</span><span class="en">Proving "good"</span></td><td><span class="zh">自建评测集：任务完成率/准确性/文化恰当性</span><span class="en">Custom eval set: task success / accuracy / cultural appropriateness</span></td></tr>
+  </table>
+  <div class="callout">
+    <span class="zh"><b>一句话卖点：</b>不是"调了个语音 API"，而是建了一个<b>能被度量的、准确且文化恰当的、能真办事</b>的多语种礼宾 Agent 系统。</span>
+    <span class="en"><b>One-line pitch:</b> not "wired up a voice API," but built a <b>measurable, accurate, culturally-appropriate, action-capable</b> multilingual concierge agent system.</span>
+  </div>
+
+  <!-- 8 SPA PLAN -->
+  <h2><span class="n">08</span><span class="zh">SPA 主线实施计划（基于代码）</span><span class="en">SPA Line Implementation Plan (code-grounded)</span></h2>
+  <div class="callout warn">
+    <span class="zh"><b>先修一个架构裂缝：</b>SPA 目前有<b>两条互不相通的预约路径</b>——(a) 语音链路：orchestrator → <code>booking-agent</code> → MCP <code>check_spa_availability</code>；(b) 触屏链路：<code>/spa/+page.svelte</code> 里<b>组件自带一套硬编码</b> <code>TIME_SLOTS</code>/<code>TAKEN</code>，提交打到 <code>/api/spa/[id]</code>。两边档期数据完

@@ -221,6 +221,33 @@ npm run dev --workspace=apps/tablet -- --host 127.0.0.1
 
 ---
 
+## AI 语音助手（实时对话）
+
+平板常驻一个语音助手（`VoiceAssistant.svelte`，通过 `+layout.svelte` 挂载在所有非登录页）。链路：
+
+1. **采集** — `MediaRecorder` + 唤醒词（`wake-detector.ts`）+ 说完后的静音检测（`silence-vad.ts`）。
+2. **STT** — `POST /api/stt` → OpenAI `whisper-1`（`verbose_json`，自动语言检测），返回 `{ text, detected }`。
+3. **对话（SSE 流式）** — `POST /api/conversation` → `orchestrator.streamConversation()`。Claude（`AI_MODEL`，默认 `claude-sonnet-4-6`）返回单个 JSON `{ intent, entities, reply }`；其中 `reply` 字段在生成过程中通过 SSE 逐字流式推给前端（`extractReplyProgress`）。
+4. **分发** — 按 `intent` 路由到领域 agent：`order-agent`、`booking-agent`（spa / restaurant / transport）、`info-agent`。agent 经 JSON-RPC 调用 MCP 服务（`ai/tools/mcp-client.ts`）。
+5. **TTS** — `POST /api/tts` → OpenAI `tts-1`（音色 `nova`），整段音频播放（`utils/tts.ts`）。
+
+### 当前状态与已知限制（分支 `feature/aki-realtime-stream`）
+
+| 方面 | 现状 |
+| --- | --- |
+| 文字回复 | 已通过 SSE 逐字流式 ✅ |
+| 语音 I/O | **未流式** —— STT 整段转写；TTS 要等整段合成完才播 |
+| 语言 | **仅 `en` / `zh`**；印尼语尚未接入（在 STT `LANG_MAP` 处被丢弃） |
+| 模型路由 | 无 —— 单一模型处理所有语言 |
+| 业务数据 | **Mock** —— 如 `check_spa_availability` 返回写死时段，`create_spa_booking` 返回 mock 确认码（`// TODO: query/INSERT Cakrasoft PMS`） |
+| SPA 预约路径 | `/spa` 触屏 UI 用**组件自带**的硬编码时段，与语音 → MCP 路径不同源 |
+| 档期校验 | `booking-agent` **不**用可用档期校验所选时段；预约确认回复硬编码英文 |
+| 意图输出 | 从 raw JSON 文本解析（`parseRaw`）；尚未用 tool/function calling |
+
+SPA 主线的技术设计与实施计划见 [AllStay-SPA-技术方案.html](./docs/AllStay-SPA-技术方案.html)。
+
+---
+
 ## 项目结构
 
 ```text
@@ -229,7 +256,13 @@ AllStayProject/
     tablet/               # SvelteKit 平板应用
       src/
         lib/
+          ai/             # orchestrator、agents(order/booking/info)、tools/mcp-client
+          components/     # VoiceAssistant.svelte、VoiceButton.svelte、...
+          services/       # ai-conversation.ts（客户端 STT→SSE→TTS 流程）
+          utils/          # recorder、silence-vad、wake-detector、tts
+          stores/
         routes/
+          api/            # stt、tts、conversation、spa、booking、order、...
         types/
     mcp-servers/          # MCP server workspace
       packages/
