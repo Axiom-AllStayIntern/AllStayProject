@@ -1,0 +1,20 @@
+{
+  "name": "@allstay/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./database.js": "./src/database.ts",
+    "./redis.js": "./src/redis.ts",
+    "./printer.js": "./src/printer.ts",
+    "./types.js": "./src/types.ts"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}

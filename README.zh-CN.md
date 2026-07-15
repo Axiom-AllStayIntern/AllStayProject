@@ -1,265 +1,254 @@
 # AllStay
 
-酒店平板服务系统 — SvelteKit 全栈应用 + MCP Server 集群
+酒店平板服务系统，使用 SvelteKit 和 TypeScript 构建。
 
-**技术栈：** SvelteKit · TypeScript · Svelte Stores · Anthropic SDK · MCP · Redis · MySQL · Docker
+这份 README 面向“新设备刚从 GitHub clone 项目”的场景。请先按快速启动跑通 tablet 前端和本地 MCP 服务。
 
-**语言：** [English](./README.md) | 中文
-
----
-
-## 目录
-
-- [快速上手（前端开发）](#-快速上手前端开发)
-- [完整本地环境](#-完整本地环境含-mcp-servers)
-- [当前可以测试的内容](#-当前可以测试的内容)
-- [暂时跳过的部分](#-暂时跳过的部分)
-- [项目结构](#-项目结构)
-- [环境变量说明](#️-环境变量说明)
-- [Docker 一键启动](#-docker-一键启动)
-- [开发工作流](#开发工作流)
+语言：[English](./README.md) | 中文
 
 ---
 
-## 🚀 快速上手（前端开发）
+## 当前启动状态
 
-> **最低要求：** Node.js 20+，无需数据库，无需 Redis，无需 Docker
+| 路径 | 状态 | 现在是否推荐 |
+| --- | --- | --- |
+| Tablet 前端 / SvelteKit app | 本地可启动 | 推荐 |
+| 根目录 `npm run dev` | 会同时启动 tablet + MCP 服务 | 推荐 |
+| MCP servers | workspace package 已配置 | 推荐 |
+| Docker Compose | 已存在，但生产构建路径仍需单独验证 | 后续可选 |
 
-### 第一步：安装依赖
+如果只是最快速检查 UI，也可以只启动 `apps/tablet`。正常本地开发推荐使用根目录 `npm run dev`。
+
+---
+
+## 环境要求
+
+- Node.js 20 或更新版本
+- npm，随 Node.js 一起安装
+- Git
+
+后续可选：
+
+- Docker Desktop，用于 Redis / Docker Compose
+- MySQL，用于未来 PMS 集成
+- Anthropic API key，仅 AI 对话功能需要
+- OpenAI API key，仅语音识别 / 语音合成功能需要
+
+---
+
+## 新设备快速启动
+
+### 1. Clone 并进入项目
 
 ```bash
-cd apps/tablet
+git clone <your-repo-url>
+cd AllStayProject
+```
+
+如果你的目录名不同，进入实际 clone 出来的目录即可。
+
+### 2. 安装依赖
+
+在仓库根目录执行：
+
+```bash
 npm install
 ```
 
-### 第二步：配置环境变量
+这会安装 workspace 依赖，包括 `apps/tablet`。
+
+### 3. 创建 tablet 环境变量文件
+
+macOS / Linux / Git Bash：
 
 ```bash
-cp ../../.env.example .env
-# 不需要填写任何值，留空即可先跑起来
+cp .env.example apps/tablet/.env
 ```
 
-### 第三步：启动开发服务器
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.example apps/tablet/.env
+```
+
+首次只测前端时，可以先保留模板里的占位值。AI、语音、Redis、打印机、PMS 数据库功能后续才需要真实配置。
+
+### 4. 启动完整本地开发环境
+
+在仓库根目录执行：
 
 ```bash
 npm run dev
 ```
 
-浏览器打开 [http://localhost:5173](http://localhost:5173)
+这会启动：
 
-### 可以立即看到什么
+| 服务 | URL |
+| --- | --- |
+| Tablet app | `http://localhost:5173/login` |
+| Dining MCP | `http://127.0.0.1:3001/health` |
+| SPA MCP | `http://127.0.0.1:3002/health` |
+| Restaurant MCP | `http://127.0.0.1:3003/health` |
+| Transport MCP | `http://127.0.0.1:3004/health` |
 
-| 路由 | 内容 | 备注 |
-|------|------|------|
-| `/login` | 员工登录页（数字键盘） | 任意 Staff ID + 4-6位 PIN 可通过 |
-| `/room-select` | 房间号输入 | 输入3-4位数字即可 |
-| `/home` | 首页（4个功能入口） | 完全可用 |
-| `/dining` | 餐饮分类列表 | 需要 MCP 连接（见下文 Mock） |
-| `/spa` | SPA 服务列表 | 同上 |
-| `/cart` | 购物车页面 | store 已实现，UI 完全可用 |
-| `/amenities` | 酒店设施（静态数据） | **完全可用，无需 MCP** |
-| `/explore` | 探索巴厘 Hub 页 | 完全可用 |
-
----
-
-## 🔧 完整本地环境（含 MCP Servers）
-
-### 前提条件
-
-- Node.js 20+
-- Docker Desktop（用于 Redis）
-- 可选：MySQL（Cakrasoft PMS 数据库，Sprint 2 再接）
-
-### 步骤
-
-```bash
-# 1. 在根目录安装所有 workspaces 依赖
-npm install
-
-# 2. 启动 Redis（仅需 Docker，不需要完整 compose）
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 3. 配置环境变量
-cp .env.example apps/tablet/.env
-# 编辑 apps/tablet/.env，填写：
-#   ANTHROPIC_API_KEY=sk-ant-...（AI 对话功能需要）
-#   REDIS_URL=redis://localhost:6379
-
-# 4. 启动 MCP Servers（每个新开一个终端）
-cd apps/mcp-servers/packages/dining && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/spa    && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/restaurant && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/transport  && npm install && npx ts-node src/index.ts
-
-# 5. 启动平板应用
-cd apps/tablet && npm run dev
-```
-
-### MCP Server 健康检查
-
-```bash
-curl http://localhost:3001/health  # dining
-curl http://localhost:3002/health  # spa
-curl http://localhost:3003/health  # restaurant
-curl http://localhost:3004/health  # transport
-```
-
----
-
-## ✅ 当前可以测试的内容
-
-### 1. 登录 + 房间选择流程
-
-访问 `/login` → 输入任意 Staff ID（如 `S001`）→ 输入任意4-6位 PIN → 自动跳转 `/room-select` → 输入房间号（如 `301`）→ 进入首页。
-
-**验证点：**
-- 数字键盘交互
-- 路由守卫（直接访问 `/home` 会跳回 `/login`）
-- RoomNumber 显示在 Header
-
-### 2. 购物车 Store
-
-在浏览器 Console 测试：
-
-```javascript
-// 打开开发者工具，进入 /cart 页面
-// 购物车 store 会自动合并相同菜品
-
-// 测试 API：
-fetch('/api/cart', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'add',
-    roomId: '301',
-    itemId: 'item-001',
-    quantity: 2,
-    specialInstructions: '少辣'
-  })
-}).then(r => r.json()).then(console.log)
-```
-
-### 3. AI 对话端点（需要 ANTHROPIC_API_KEY）
-
-```bash
-curl -X POST http://localhost:5173/api/conversation \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "帮我点一份炒饭，少辣",
-    "roomId": "301",
-    "language": "zh"
-  }'
-```
-
-预期返回：
-
-```json
-{
-  "reply": "已为您将炒饭（少辣）加入购物车...",
-  "intent": "order"
-}
-```
-
-### 4. 闲置屏保
-
-进入任意页面后，打开 Console 执行：
-
-```javascript
-// 手动触发屏保（不用等5分钟）
-import { idle } from '/src/lib/stores/idle.ts'
-idle.triggerScreensaver?.()
-```
-
-或者修改 `src/lib/stores/idle.ts` 中的超时时间为 `10 * 1000`（10秒）测试。
-
-### 5. 语言切换
-
-点击 Header 右侧的 `EN / 中` 按钮，所有页面文本切换为中文。
-
----
-
-## ⏭️ 暂时跳过的部分
-
-这些功能框架已搭好，但需要真实数据源才能完整工作：
-
-| 功能 | 状态 | 解锁条件 |
-|------|------|---------|
-| 菜单数据展示 | 框架就绪 | 连接 Cakrasoft PMS 数据库 |
-| SPA 真实可用时段 | 框架就绪 | PMS 数据库 |
-| 餐厅列表 | 框架就绪 | PMS 数据库 |
-| 交通选项 | **有 Mock 数据** | 现在就能跑 |
-| 订单打印 | 框架就绪 | 配置打印机 IP |
-| Capacitor 持久化 | 框架就绪 | 打包为 Android APK |
-
----
-
-## 📁 项目结构
+浏览器打开：
 
 ```text
-allstay/
-├── apps/
-│   ├── tablet/               # SvelteKit 平板应用（前端 + BFF）
-│   │   └── src/
-│   │       ├── lib/
-│   │       │   ├── ai/       # AI 编排层（Orchestrator + Agents）
-│   │       │   ├── components/  # 11个 UI 组件
-│   │       │   └── stores/   # 5个 Svelte Stores
-│   │       ├── routes/       # 页面 + API 端点
-│   │       └── types/        # TypeScript 类型
-│   │
-│   └── mcp-servers/          # MCP Server 集群
-│       └── packages/
-│           ├── shared/       # 数据库 / Redis / 打印机
-│           ├── dining/       # :3001 — 餐饮
-│           ├── spa/          # :3002 — SPA
-│           ├── restaurant/   # :3003 — 餐厅
-│           └── transport/    # :3004 — 交通
-│
-├── packages/shared-types/    # 跨包类型定义
-├── docs/architecture.md      # 架构图
-├── docker-compose.yml        # 一键生产部署
-└── scripts/
-    ├── build.sh
-    └── deploy.sh
+http://localhost:5173/login
 ```
 
----
+### 只启动 UI
 
-## ⚙️ 环境变量说明
-
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `ANTHROPIC_API_KEY` | AI 功能必填 | 从 console.anthropic.com 获取 |
-| `AI_MODEL` | 否 | 默认 `claude-sonnet-4-6` |
-| `MCP_DINING_URL` | 否 | 默认 `http://localhost:3001` |
-| `MCP_SPA_URL` | 否 | 默认 `http://localhost:3002` |
-| `MCP_RESTAURANT_URL` | 否 | 默认 `http://localhost:3003` |
-| `MCP_TRANSPORT_URL` | 否 | 默认 `http://localhost:3004` |
-| `REDIS_URL` | 购物车功能 | 默认 `redis://localhost:6379` |
-| `DB_HOST/USER/PASSWORD` | PMS 数据 | Sprint 2 接入 |
-| `SESSION_SECRET` | 生产必填 | 随机字符串，用于 cookie 签名 |
-| `PRINTER_IP` | 打印功能 | 厨房打印机 IP |
-
----
-
-## 🐳 Docker 一键启动
+如果你只想启动 tablet，不启动 MCP 服务：
 
 ```bash
-# 确保 .env 文件存在（从 .env.example 复制并填写）
-cp .env.example .env
-
-# 启动全部服务
-docker compose up -d
-
-# 查看日志
-docker compose logs -f tablet
-docker compose logs -f mcp-dining
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1
 ```
 
-访问 [http://localhost:3000](http://localhost:3000)
+也可以进入 tablet 目录执行：
+
+```bash
+cd apps/tablet
+npm run dev -- --host 127.0.0.1
+```
 
 ---
 
-## 开发工作流
+## 首次手动测试
 
-参见 [github_workflow_guideline.md](./github_workflow_guideline.md)
+1. 打开 `http://localhost:5173/login`
+2. Staff ID 随便填，例如 `S001`
+3. PIN 填任意 4-6 位数字，例如 `1234`
+4. 应跳转到 `/room-select`
+5. 房号填任意 3-4 位数字，例如 `301`
+6. 应进入 `/home`
+
+不依赖 MCP / Redis / 数据库、应该可以直接测试的页面：
+
+| 路由 | 预期结果 |
+| --- | --- |
+| `/login` | 员工登录页 |
+| `/room-select` | 房号输入页 |
+| `/home` | 平板首页 |
+| `/cart` | 购物车 UI 和本地流程 |
+| `/amenities` | 静态酒店设施 |
+| `/explore` | 探索页入口 |
+
+这些页面可以调用 MCP，但根据具体操作可能仍需要 Redis/MySQL 数据：
+
+| 路由 | 原因 |
+| --- | --- |
+| `/dining` | Dining MCP 已可启动；真实菜单数据需要 PMS 数据库 |
+| `/spa` | SPA MCP 已可启动；部分数据当前是 mock |
+| `/restaurants` | Restaurant MCP 已可启动；真实餐厅数据需要 PMS 数据库 |
+| `/explore/transport` | Transport MCP 已可启动，并有 mock options |
+
+---
+
+## 常用测试命令
+
+### 类型检查
+
+```bash
+npm run check --workspace=apps/tablet
+```
+
+### 构建 tablet 生产包
+
+```bash
+npm run build --workspace=apps/tablet
+```
+
+### 预览生产包
+
+```bash
+npm run preview --workspace=apps/tablet
+```
+
+---
+
+## 环境变量
+
+模板文件是 `.env.example`。本地开发 tablet 时，把它复制到 `apps/tablet/.env`。
+
+| 变量 | 用途 | 说明 |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | AI 对话接口 | 基础 UI 测试不需要 |
+| `AI_MODEL` | AI 对话接口 | 代码里有默认值 |
+| `OPENAI_API_KEY` | 语音识别和语音合成 | 基础 UI 测试不需要 |
+| `MCP_DINING_URL` | Dining MCP 调用 | 默认 `http://localhost:3001` |
+| `MCP_SPA_URL` | SPA MCP 调用 | 默认 `http://localhost:3002` |
+| `MCP_RESTAURANT_URL` | Restaurant MCP 调用 | 默认 `http://localhost:3003` |
+| `MCP_TRANSPORT_URL` | Transport MCP 调用 | 默认 `http://localhost:3004` |
+| `REDIS_URL` | Redis 相关流程 | 默认 `redis://localhost:6379` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | PMS 数据库集成 | 当前本地路径尚未完整接入 |
+| `PRINTER_IP`, `PRINTER_PORT` | 打印机集成 | 可选 |
+| `SESSION_SECRET`, `STAFF_PIN_SALT` | Auth/session 加固 | 生产风格部署需要 |
+
+不要提交真实 `.env` 文件或 API key。
+
+---
+
+## 常见问题
+
+### 5173 端口被占用
+
+停止旧的 dev server，或者换端口启动：
+
+```bash
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1 --port 5174
+```
+
+然后打开 `http://127.0.0.1:5174/login`。
+
+### 根目录 `npm run dev` 卡住或失败
+
+先检查 `5173`、`3001`、`3002`、`3003`、`3004` 是否已有旧 dev server 占用。停止旧进程后重试：
+
+```bash
+npm run dev
+```
+
+如果你只需要先调 UI，可以使用：
+
+```bash
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1
+```
+
+### Docker 启动失败
+
+请先使用本地 `npm run dev`。Docker Compose 文件已存在，但生产 Docker 路径还需要单独验证后再作为部署依据。
+
+---
+
+## 项目结构
+
+```text
+AllStayProject/
+  apps/
+    tablet/               # SvelteKit 平板应用
+      src/
+        lib/
+        routes/
+        types/
+    mcp-servers/          # MCP server workspace
+      packages/
+        dining/
+        spa/
+        restaurant/
+        transport/
+        shared/
+  packages/
+    shared-types/
+  docs/
+  scripts/
+  docker-compose.yml
+  package.json
+  .env.example
+```
+
+---
+
+## 开发流程
+
+见 [github_workflow_guideline.md](./github_workflow_guideline.md)。

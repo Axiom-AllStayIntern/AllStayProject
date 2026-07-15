@@ -1,262 +1,251 @@
 # AllStay
 
-Hotel tablet service system — a full-stack SvelteKit application with an MCP server cluster.
+Hotel tablet service system built with SvelteKit and TypeScript.
 
-**Tech stack:** SvelteKit · TypeScript · Svelte Stores · Anthropic SDK · MCP · Redis · MySQL · Docker
+This README is written for a fresh device after cloning the GitHub repository. Follow the quick start first. It runs the tablet app and the local MCP services.
 
-**Language:** English | [中文](./README.zh-CN.md)
-
----
-
-## Contents
-
-- [Quick Start (Frontend Development)](#-quick-start-frontend-development)
-- [Full Local Environment](#-full-local-environment-with-mcp-servers)
-- [What You Can Test Right Now](#-what-you-can-test-right-now)
-- [Temporarily Skipped](#-temporarily-skipped)
-- [Project Structure](#-project-structure)
-- [Environment Variables](#️-environment-variables)
-- [One-Command Docker Startup](#-one-command-docker-startup)
-- [Development Workflow](#development-workflow)
+Language: English | [中文](./README.zh-CN.md)
 
 ---
 
-## 🚀 Quick Start (Frontend Development)
+## Current Startup Status
 
-> **Minimum requirements:** Node.js 20+ only. No database, Redis, or Docker required.
+| Path | Status | Use it now? |
+| --- | --- | --- |
+| Tablet frontend / SvelteKit app | Works locally | Yes |
+| Root `npm run dev` | Starts tablet + MCP services together | Yes |
+| MCP servers | Workspace packages are configured | Yes |
+| Docker Compose | Present, but production build path still needs separate validation | Optional later |
 
-### Step 1: Install dependencies
+For the fastest UI-only check, you can still start `apps/tablet` only. For normal local development, use root `npm run dev`.
+
+---
+
+## Requirements
+
+- Node.js 20 or newer
+- npm, included with Node.js
+- Git
+
+Optional later:
+
+- Docker Desktop, for Redis / Docker Compose
+- MySQL, for future PMS integration
+- Anthropic API key, only for AI conversation features
+- OpenAI API key, only for STT / TTS features
+
+---
+
+## Fresh Clone Quick Start
+
+### 1. Clone and enter the repository
 
 ```bash
-cd apps/tablet
+git clone <your-repo-url>
+cd AllStayProject
+```
+
+If your folder name is different, enter that folder instead.
+
+### 2. Install dependencies
+
+Run this from the repository root:
+
+```bash
 npm install
 ```
 
-### Step 2: Configure environment variables
+This installs the workspace dependencies, including `apps/tablet`.
+
+### 3. Create the tablet environment file
+
+On macOS / Linux / Git Bash:
 
 ```bash
-cp ../../.env.example .env
-# You can leave every value empty for the first local run
+cp .env.example apps/tablet/.env
 ```
 
-### Step 3: Start the development server
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example apps/tablet/.env
+```
+
+For the first frontend-only run, you can leave the placeholder values as-is. AI, speech, Redis, printer, and PMS database features need real values later.
+
+### 4. Start the full local dev environment
+
+From the repository root:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+This starts:
 
-### What you can see immediately
+| Service | URL |
+| --- | --- |
+| Tablet app | `http://localhost:5173/login` |
+| Dining MCP | `http://127.0.0.1:3001/health` |
+| SPA MCP | `http://127.0.0.1:3002/health` |
+| Restaurant MCP | `http://127.0.0.1:3003/health` |
+| Transport MCP | `http://127.0.0.1:3004/health` |
 
-| Route | Content | Notes |
-|------|------|------|
-| `/login` | Staff login page with numeric keypad | Any Staff ID + 4-6 digit PIN will work |
-| `/room-select` | Room number input | Enter any 3-4 digit number |
-| `/home` | Home page with 4 feature entries | Fully usable |
-| `/dining` | Dining category list | Requires an MCP connection (see mock setup below) |
-| `/spa` | SPA service list | Same as above |
-| `/cart` | Cart page | Store is implemented and the UI is fully usable |
-| `/amenities` | Hotel amenities with static data | **Fully usable without MCP** |
-| `/explore` | Explore Bali hub page | Fully usable |
-
----
-
-## 🔧 Full Local Environment (with MCP Servers)
-
-### Prerequisites
-
-- Node.js 20+
-- Docker Desktop (for Redis)
-- Optional: MySQL (Cakrasoft PMS database, planned for Sprint 2)
-
-### Steps
-
-```bash
-# 1. Install all workspace dependencies from the repository root
-npm install
-
-# 2. Start Redis (Docker only, no full compose stack required)
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 3. Configure environment variables
-cp .env.example apps/tablet/.env
-# Edit apps/tablet/.env and set:
-#   ANTHROPIC_API_KEY=sk-ant-... (required for AI chat)
-#   REDIS_URL=redis://localhost:6379
-
-# 4. Start MCP servers (open each command in a separate terminal)
-cd apps/mcp-servers/packages/dining && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/spa    && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/restaurant && npm install && npx ts-node src/index.ts
-cd apps/mcp-servers/packages/transport  && npm install && npx ts-node src/index.ts
-
-# 5. Start the tablet application
-cd apps/tablet && npm run dev
-```
-
-### MCP server health checks
-
-```bash
-curl http://localhost:3001/health  # dining
-curl http://localhost:3002/health  # spa
-curl http://localhost:3003/health  # restaurant
-curl http://localhost:3004/health  # transport
-```
-
----
-
-## ✅ What You Can Test Right Now
-
-### 1. Login + room selection flow
-
-Visit `/login` → enter any Staff ID such as `S001` → enter any 4-6 digit PIN → get redirected to `/room-select` → enter a room number such as `301` → arrive at the home page.
-
-**What to verify:**
-- Numeric keypad interaction
-- Route guards (`/home` redirects back to `/login` if accessed directly)
-- `RoomNumber` display in the header
-
-### 2. Cart store
-
-Test in the browser console:
-
-```javascript
-// Open DevTools and navigate to /cart
-// The cart store automatically merges duplicate items
-
-// Test API:
-fetch('/api/cart', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'add',
-    roomId: '301',
-    itemId: 'item-001',
-    quantity: 2,
-    specialInstructions: 'less spicy'
-  })
-}).then(r => r.json()).then(console.log)
-```
-
-### 3. AI conversation endpoint (requires `ANTHROPIC_API_KEY`)
-
-```bash
-curl -X POST http://localhost:5173/api/conversation \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Please add one fried rice, less spicy",
-    "roomId": "301",
-    "language": "en"
-  }'
-```
-
-Expected response:
-
-```json
-{
-  "reply": "Fried rice (less spicy) has been added to your cart...",
-  "intent": "order"
-}
-```
-
-### 4. Idle screensaver
-
-After entering any page, open the console and run:
-
-```javascript
-// Trigger the screensaver manually instead of waiting 5 minutes
-import { idle } from '/src/lib/stores/idle.ts'
-idle.triggerScreensaver?.()
-```
-
-Or change the timeout in `src/lib/stores/idle.ts` to `10 * 1000` (10 seconds) for testing.
-
-### 5. Language switching
-
-Click the `EN / 中` button on the right side of the header to switch all page text to Chinese.
-
----
-
-## ⏭️ Temporarily Skipped
-
-These foundations are already in place, but they still need real data sources before they become fully functional:
-
-| Feature | Status | Unlock condition |
-|------|------|---------|
-| Menu data display | Framework ready | Connect the Cakrasoft PMS database |
-| Real SPA availability | Framework ready | PMS database |
-| Restaurant list | Framework ready | PMS database |
-| Transport options | **Mock data available** | Ready to run now |
-| Order printing | Framework ready | Configure printer IP |
-| Capacitor persistence | Framework ready | Package as an Android APK |
-
----
-
-## 📁 Project Structure
+Open:
 
 ```text
-allstay/
-├── apps/
-│   ├── tablet/               # SvelteKit tablet app (frontend + BFF)
-│   │   └── src/
-│   │       ├── lib/
-│   │       │   ├── ai/       # AI orchestration layer (orchestrator + agents)
-│   │       │   ├── components/  # 11 UI components
-│   │       │   └── stores/   # 5 Svelte stores
-│   │       ├── routes/       # Pages + API endpoints
-│   │       └── types/        # TypeScript types
-│   │
-│   └── mcp-servers/          # MCP server cluster
-│       └── packages/
-│           ├── shared/       # Database / Redis / printer utilities
-│           ├── dining/       # :3001 — dining
-│           ├── spa/          # :3002 — spa
-│           ├── restaurant/   # :3003 — restaurant
-│           └── transport/    # :3004 — transport
-│
-├── packages/shared-types/    # Cross-package type definitions
-├── docs/architecture.md      # Architecture diagram
-├── docker-compose.yml        # One-command production deployment
-└── scripts/
-    ├── build.sh
-    └── deploy.sh
+http://localhost:5173/login
 ```
 
----
+### UI-only startup
 
-## ⚙️ Environment Variables
-
-| Variable | Required | Description |
-|------|------|------|
-| `ANTHROPIC_API_KEY` | Required for AI features | Obtain from console.anthropic.com |
-| `AI_MODEL` | No | Defaults to `claude-sonnet-4-6` |
-| `MCP_DINING_URL` | No | Defaults to `http://localhost:3001` |
-| `MCP_SPA_URL` | No | Defaults to `http://localhost:3002` |
-| `MCP_RESTAURANT_URL` | No | Defaults to `http://localhost:3003` |
-| `MCP_TRANSPORT_URL` | No | Defaults to `http://localhost:3004` |
-| `REDIS_URL` | Required for cart features | Defaults to `redis://localhost:6379` |
-| `DB_HOST/USER/PASSWORD` | Required for PMS data | Planned for Sprint 2 integration |
-| `SESSION_SECRET` | Required in production | Random string used for cookie signing |
-| `PRINTER_IP` | Required for printing | Kitchen printer IP |
-
----
-
-## 🐳 One-Command Docker Startup
+If you only want the tablet app without MCP services:
 
 ```bash
-# Make sure .env exists (copy it from .env.example and fill in the values)
-cp .env.example .env
-
-# Start all services
-docker compose up -d
-
-# View logs
-docker compose logs -f tablet
-docker compose logs -f mcp-dining
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Or from the tablet folder:
+
+```bash
+cd apps/tablet
+npm run dev -- --host 127.0.0.1
+```
+
+---
+
+## First Manual Test
+
+1. Open `http://localhost:5173/login`
+2. Enter any staff ID, for example `S001`
+3. Enter any 4-6 digit PIN, for example `1234`
+4. You should be redirected to `/room-select`
+5. Enter any 3-4 digit room number, for example `301`
+6. You should arrive at `/home`
+
+Pages that should work without MCP / Redis / database:
+
+| Route | Expected result |
+| --- | --- |
+| `/login` | Staff login page |
+| `/room-select` | Room number input |
+| `/home` | Main tablet home page |
+| `/cart` | Cart UI and local flow |
+| `/amenities` | Static hotel amenities |
+| `/explore` | Explore hub |
+
+Pages that can call MCP, but may still need Redis/MySQL data depending on the action:
+
+| Route | Why |
+| --- | --- |
+| `/dining` | Dining MCP is available; real menu data needs PMS database |
+| `/spa` | SPA MCP is available; some data is currently mocked |
+| `/restaurants` | Restaurant MCP is available; real restaurant data needs PMS database |
+| `/explore/transport` | Transport MCP is available with mock options |
+
+---
+
+## Useful Test Commands
+
+### Type check
+
+```bash
+npm run check --workspace=apps/tablet
+```
+
+### Production build for the tablet app
+
+```bash
+npm run build --workspace=apps/tablet
+```
+
+### Preview the production build
+
+```bash
+npm run preview --workspace=apps/tablet
+```
+
+---
+
+## Environment Variables
+
+The template file is `.env.example`. For local tablet development, copy it to `apps/tablet/.env`.
+
+| Variable | Needed for | Notes |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | AI conversation endpoint | Optional for basic UI testing |
+| `AI_MODEL` | AI conversation endpoint | Has a fallback in code |
+| `OPENAI_API_KEY` | Speech-to-text and text-to-speech | Optional for basic UI testing |
+| `MCP_DINING_URL` | Dining MCP calls | Defaults to `http://localhost:3001` |
+| `MCP_SPA_URL` | SPA MCP calls | Defaults to `http://localhost:3002` |
+| `MCP_RESTAURANT_URL` | Restaurant MCP calls | Defaults to `http://localhost:3003` |
+| `MCP_TRANSPORT_URL` | Transport MCP calls | Defaults to `http://localhost:3004` |
+| `REDIS_URL` | Redis-backed flows | Defaults to `redis://localhost:6379` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | PMS database integration | Future / incomplete local path |
+| `PRINTER_IP`, `PRINTER_PORT` | Printer integration | Optional |
+| `SESSION_SECRET`, `STAFF_PIN_SALT` | Auth/session hardening | Required for production-style deployment |
+
+Do not commit real `.env` files or API keys.
+
+---
+
+## Common Problems
+
+### Port 5173 is already in use
+
+Stop the old dev server, or run Vite on another port:
+
+```bash
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1 --port 5174
+```
+
+Then open `http://127.0.0.1:5174/login`.
+
+### Root `npm run dev` gets stuck or fails
+
+First check whether old dev servers are still running on ports `5173`, `3001`, `3002`, `3003`, or `3004`. Stop them, then retry:
+
+```bash
+npm run dev
+```
+
+If you only need the UI while debugging MCP startup, use:
+
+```bash
+npm run dev --workspace=apps/tablet -- --host 127.0.0.1
+```
+
+### Docker startup fails
+
+Use local `npm run dev` first. Docker Compose is present, but the production Docker path should be validated separately before relying on it for deployment.
+
+---
+
+## Project Structure
+
+```text
+AllStayProject/
+  apps/
+    tablet/               # SvelteKit tablet app
+      src/
+        lib/
+        routes/
+        types/
+    mcp-servers/          # MCP server workspace
+      packages/
+        dining/
+        spa/
+        restaurant/
+        transport/
+        shared/
+  packages/
+    shared-types/
+  docs/
+  scripts/
+  docker-compose.yml
+  package.json
+  .env.example
+```
 
 ---
 

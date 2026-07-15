@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=packages/dining\" \"npm run dev --workspace=packages/spa\" \"npm run dev --workspace=packages/restaurant\" \"npm run dev --workspace=packages/transport\"",
+    "dev": "concurrently \"npm run dev --workspace=@allstay/mcp-dining\" \"npm run dev --workspace=@allstay/mcp-spa\" \"npm run dev --workspace=@allstay/mcp-restaurant\" \"npm run dev --workspace=@allstay/mcp-transport\"",
     "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
