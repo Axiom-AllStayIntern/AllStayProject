@@ -18,6 +18,7 @@ export interface AIResponse {
 const INTENT_ROUTES: Record<string, string> = {
 	order:               '/dining',
 	checkout:            '/cart',
+	spa_info:            '/spa',
 	booking_spa:         '/spa',
 	booking_restaurant:  '/restaurants',
 	booking_transport:   '/explore'

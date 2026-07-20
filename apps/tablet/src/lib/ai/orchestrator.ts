@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { handleOrderIntent } from './agents/order-agent.js';
 import { handleBookingIntent } from './agents/booking-agent.js';
 import { handleInfoIntent } from './agents/info-agent.js';
+import { runSpaConcierge, resolveSpaServiceId } from './agents/spa-agent.js';
 
 export interface ConversationInput {
 	message: string;
@@ -29,7 +30,7 @@ Analyze the guest's message and respond with ONLY a raw JSON object — no markd
 
 Response schema:
 {
-  "intent": "order" | "cancel_order" | "checkout" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
+  "intent": "order" | "cancel_order" | "checkout" | "spa_info" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
   "entities": {
     "dish": string | null,
     "quantity": number | null,
@@ -55,6 +56,8 @@ Rules:
 - Use "switch_language" when the guest explicitly requests a language change: "speak English", "说中文", "switch to Chinese", "用英文", "换成中文", "please speak Chinese", etc. Reply naturally in the requested language confirming the switch.
 - Use "checkout" when the guest wants to place/submit their order, go to cart, or confirm their selections: "下单", "结账", "去购物车", "提交订单", "place my order", "go to cart", "checkout", "confirm order", "I'm done ordering", "that's all for food", "可以下单了", "帮我结算" etc. Reply in the guest's language reminding them they'll need to manually confirm on the next screen.
 - Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
+- Use "spa_info" when the guest asks about spa treatments in an exploratory way: recommendations, what treatments/massages are available, prices, durations, or descriptions ("推荐个 SPA", "有什么按摩", "spa recommendation", "what massages do you have", "介绍下你们的 spa"). Set entities.query to the guest's request. Keep your "reply" a brief one-line acknowledgement (e.g. "Let me find the best option for you") — the detailed, data-grounded recommendation is produced separately, so do NOT invent treatment names or prices here.
+- Use "booking_spa" only when the guest clearly wants to reserve a specific spa treatment (mentions booking/reserving, or names a treatment together with a date/time). Put the treatment name (free text is fine) in entities.serviceId, and the date/time in entities.date / entities.time.
 
 cancel_order intent guide:
 Use "cancel_order" when the guest wants to remove, cancel, or undo an item from their cart.
@@ -135,10 +138,30 @@ async function dispatchParsed(
 				: (result.reply ?? parsed.reply);
 			return { reply, intent: 'order', data: result.data };
 		}
+		case 'spa_info': {
+			const result = await runSpaConcierge({
+				message: input.message,
+				language: input.language,
+				history: input.history
+			});
+			return {
+				reply: result.reply,
+				intent: 'spa_info',
+				data: { recommendedServiceIds: result.recommendedServiceIds }
+			};
+		}
 		case 'booking_spa': {
+			// Resolve a free-text treatment mention ("Balinese massage" / "巴厘按摩") to a
+			// catalogue id. If it can't be resolved, leave undefined so the agent asks which one.
+			const rawServiceId = (parsed.entities.serviceId as string | undefined) ?? undefined;
+			const serviceId =
+				(rawServiceId ? await resolveSpaServiceId(rawServiceId) : null) ??
+				(await resolveSpaServiceId(input.message)) ??
+				undefined;
+
 			const result = await handleBookingIntent({
 				service: 'spa',
-				serviceId: parsed.entities.serviceId as string,
+				serviceId,
 				roomId: input.roomId,
 				date: parsed.entities.date as string,
 				time: parsed.entities.time as string,
