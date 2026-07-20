@@ -1,63 +1,81 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { query } from '@allstay/shared/database.js';
+import { spaRepo } from './data/spa-repo.js';
+import {
+	ListServicesSchema,
+	GetServiceSchema,
+	CheckAvailabilitySchema,
+	CreateBookingSchema,
+	CancelBookingSchema
+} from './schemas/spa.schema.js';
+
+// MCP tool results must be { content: [{ type: 'text', text: <string> }] }.
+function textResult(obj: unknown) {
+	return { content: [{ type: 'text' as const, text: JSON.stringify(obj) }] };
+}
 
 export function registerTools(server: McpServer) {
 	server.tool(
-		'check_spa_availability',
-		'Check available time slots for a spa service on a given date',
-		{
-			service_id: z.string().optional(),
-			date: z.string().optional()
-		},
+		'list_spa_services',
+		'List or search spa services/treatments. Returns name (en/zh/id), category, duration, price (IDR) and contraindications. Use this for recommendations and descriptions.',
+		ListServicesSchema.shape,
 		async (args) => {
-			// TODO: query Cakrasoft PMS for available therapist slots
-			const slots = [
-				{ time: '09:00', isAvailable: true },
-				{ time: '10:00', isAvailable: true },
-				{ time: '11:00', isAvailable: false },
-				{ time: '14:00', isAvailable: true },
-				{ time: '15:00', isAvailable: true },
-				{ time: '16:00', isAvailable: true }
-			];
-			return { content: [{ type: 'text', text: JSON.stringify({ services: [], slots }) }] };
+			const { keyword, category } = ListServicesSchema.parse(args);
+			const services = await spaRepo.listServices({ keyword, category });
+			return textResult({ services });
+		}
+	);
+
+	server.tool(
+		'get_spa_service',
+		'Get the full detail of a single spa service by its id (duration, price, description, contraindications).',
+		GetServiceSchema.shape,
+		async (args) => {
+			const { service_id } = GetServiceSchema.parse(args);
+			const service = await spaRepo.getService(service_id);
+			return textResult(service ? { service } : { error: 'service_not_found', service_id });
+		}
+	);
+
+	server.tool(
+		'check_spa_availability',
+		'Check available time slots for a spa service on a given date. Both service_id and date are needed to compute real slots.',
+		CheckAvailabilitySchema.shape,
+		async (args) => {
+			const { service_id, date } = CheckAvailabilitySchema.parse(args);
+			if (!service_id || !date) {
+				return textResult({ slots: [], note: 'service_id and date are required to compute availability' });
+			}
+			const slots = await spaRepo.getAvailability(service_id, date);
+			return textResult({ serviceId: service_id, date, slots });
 		}
 	);
 
 	server.tool(
 		'create_spa_booking',
-		'Create a spa booking for a guest',
-		{
-			service_id: z.string(),
-			room_id: z.string(),
-			date: z.string(),
-			time: z.string(),
-			therapist_gender_preference: z.enum(['male', 'female', 'no_preference']).optional(),
-			notes: z.string().optional()
-		},
+		'Create a spa booking for a guest. Validates the slot first and REJECTS if the chosen time is unavailable (returns the free slots instead).',
+		CreateBookingSchema.shape,
 		async (args) => {
-			const confirmationCode = `SPA-${Date.now().toString(36).toUpperCase()}`;
-			// TODO: INSERT into Cakrasoft PMS bookings table
-			return {
-				content: [{
-					type: 'text',
-					text: JSON.stringify({
-						success: true,
-						confirmationCode,
-						...args
-					})
-				}]
-			};
+			const p = CreateBookingSchema.parse(args);
+			const result = await spaRepo.createBooking({
+				serviceId: p.service_id,
+				roomId: p.room_id,
+				date: p.date,
+				time: p.time,
+				therapistGenderPref: p.therapist_gender_preference,
+				notes: p.notes
+			});
+			return textResult(result);
 		}
 	);
 
 	server.tool(
 		'cancel_spa_booking',
-		'Cancel an existing spa booking',
-		{ booking_id: z.string() },
-		async ({ booking_id }) => {
-			// TODO: UPDATE bookings SET status='cancelled' WHERE id=?
-			return { content: [{ type: 'text', text: JSON.stringify({ success: true, bookingId: booking_id }) }] };
+		'Cancel an existing spa booking by confirmation code.',
+		CancelBookingSchema.shape,
+		async (args) => {
+			const { booking_id } = CancelBookingSchema.parse(args);
+			const r = await spaRepo.cancelBooking(booking_id);
+			return textResult({ success: r.ok, bookingId: booking_id });
 		}
 	);
 }

@@ -55,5 +55,25 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 		return { success: false, error: json.error.message };
 	}
 
-	return { success: true, data: json.result };
+	// MCP `tools/call` wraps the payload as { content: [{ type: 'text', text: '<json>' }] }.
+	// Unwrap it so callers get the actual payload object as `data`, not the envelope.
+	return { success: true, data: unwrapMcpResult(json.result) };
+}
+
+function unwrapMcpResult(result: unknown): unknown {
+	const content = (result as { content?: unknown })?.content;
+	if (Array.isArray(content)) {
+		const textNode = content.find(
+			(c): c is { type: string; text: string } =>
+				!!c && (c as { type?: string }).type === 'text' && typeof (c as { text?: unknown }).text === 'string'
+		);
+		if (textNode) {
+			try {
+				return JSON.parse(textNode.text);
+			} catch {
+				return textNode.text;
+			}
+		}
+	}
+	return result;
 }

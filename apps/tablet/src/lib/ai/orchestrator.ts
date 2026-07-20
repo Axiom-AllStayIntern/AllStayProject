@@ -142,7 +142,8 @@ async function dispatchParsed(
 				roomId: input.roomId,
 				date: parsed.entities.date as string,
 				time: parsed.entities.time as string,
-				notes: parsed.entities.notes as string
+				notes: parsed.entities.notes as string,
+				language: input.language
 			});
 			return { reply: result.reply, intent: 'booking_spa', data: result.data };
 		}
@@ -154,7 +155,8 @@ async function dispatchParsed(
 				date: parsed.entities.date as string,
 				time: parsed.entities.time as string,
 				partySize: parsed.entities.partySize as number,
-				notes: parsed.entities.notes as string
+				notes: parsed.entities.notes as string,
+				language: input.language
 			});
 			return { reply: result.reply, intent: 'booking_restaurant', data: result.data };
 		}
@@ -165,7 +167,8 @@ async function dispatchParsed(
 				roomId: input.roomId,
 				date: parsed.entities.date as string,
 				time: parsed.entities.time as string,
-				notes: parsed.entities.notes as string
+				notes: parsed.entities.notes as string,
+				language: input.language
 			});
 			return { reply: result.reply, intent: 'booking_transport', data: result.data };
 		}
