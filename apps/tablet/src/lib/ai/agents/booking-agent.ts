@@ -25,32 +25,48 @@ export interface AgentResult {
 const L = (lang: 'en' | 'zh' | undefined, zh: string, en: string): string => (lang === 'zh' ? zh : en);
 
 export async function handleBookingIntent(intent: BookingIntent): Promise<AgentResult> {
-	if (intent.service === 'spa') return handleSpaBooking(intent);
+	// SPA uses a two-step flow (propose → confirm). Keep the generic direct-book
+	// path for restaurant / transport whose MCPs are unchanged.
+	if (intent.service === 'spa') return proposeSpaBooking(intent);
 	return handleGenericBooking(intent);
 }
 
-// ── SPA: uses the refactored spa MCP (list / availability / create with ok+slots) ──
+// ── SPA: step 1 — propose (validate + ask to confirm, DOES NOT book) ─────────
 
 interface SpaSlot {
 	time: string;
 	isAvailable: boolean;
 }
 
-async function handleSpaBooking(intent: BookingIntent): Promise<AgentResult> {
+async function getSpaServiceName(serviceId: string, lang: 'en' | 'zh' | undefined): Promise<string> {
+	const r = await callMcpTool({ server: 'spa', tool: 'get_spa_service', params: { service_id: serviceId } });
+	const svc = (r.data as { service?: { nameEn?: string; nameZh?: string } })?.service;
+	if (!svc) return serviceId;
+	return (lang === 'zh' ? svc.nameZh : svc.nameEn) ?? svc.nameEn ?? serviceId;
+}
+
+export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentResult> {
 	const lang = intent.language;
 
-	if (!intent.serviceId || !intent.date || !intent.time) {
+	if (!intent.serviceId) {
+		return {
+			success: false,
+			reply: L(lang, '好的，请问您想预约哪一项 SPA 疗程？', 'Sure — which spa treatment would you like?')
+		};
+	}
+	if (!intent.date || !intent.time) {
+		const name = await getSpaServiceName(intent.serviceId, lang);
 		return {
 			success: false,
 			reply: L(
 				lang,
-				'好的，请告诉我想预约哪项 SPA、以及具体的日期和时间。',
-				"Sure — please tell me which spa treatment, and the date and time you'd like."
-			)
+				`好的，${name}。请告诉我想约哪天、几点？`,
+				`Great — ${name}. What date and time would you like?`
+			),
+			data: { need: ['date', 'time'] }
 		};
 	}
 
-	// 1. Check real availability and USE the result.
 	const avail = await callMcpTool({
 		server: 'spa',
 		tool: 'check_spa_availability',
@@ -80,7 +96,31 @@ async function handleSpaBooking(intent: BookingIntent): Promise<AgentResult> {
 		};
 	}
 
-	// 2. Create the booking (spa MCP validates again and returns ok/reason).
+	// Available — ask the guest to confirm. NOTHING is booked yet.
+	const name = await getSpaServiceName(intent.serviceId, lang);
+	return {
+		success: true,
+		reply: L(
+			lang,
+			`我为您找到 ${intent.date} ${intent.time} 的 ${name}。需要我确认预约吗？`,
+			`I found ${name} on ${intent.date} at ${intent.time}. Shall I confirm the booking?`
+		),
+		data: { proposal: { serviceId: intent.serviceId, date: intent.date, time: intent.time } }
+	};
+}
+
+// ── SPA: step 2 — confirm (actually creates the booking) ─────────────────────
+
+export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentResult> {
+	const lang = intent.language;
+
+	if (!intent.serviceId || !intent.date || !intent.time) {
+		return {
+			success: false,
+			reply: L(lang, '还没有待确认的预约，请先告诉我疗程、日期和时间。', 'There is nothing to confirm yet — please tell me the treatment, date and time first.')
+		};
+	}
+
 	const book = await callMcpTool({
 		server: 'spa',
 		tool: 'create_spa_booking',
@@ -100,27 +140,20 @@ async function handleSpaBooking(intent: BookingIntent): Promise<AgentResult> {
 		};
 	}
 
-	const res = book.data as {
-		ok?: boolean;
-		confirmationCode?: string;
-		availableSlots?: string[];
-		reason?: string;
-	};
-
+	const res = book.data as { ok?: boolean; confirmationCode?: string; availableSlots?: string[] };
 	if (res?.ok && res.confirmationCode) {
 		return {
 			success: true,
 			reply: L(
 				lang,
-				`已为您预约 ${intent.date} ${intent.time} 的 SPA，确认码 ${res.confirmationCode}。稍后前台会与您确认。`,
-				`Your spa on ${intent.date} at ${intent.time} is booked — confirmation code ${res.confirmationCode}. The desk will confirm with you shortly.`
+				`已确认！${intent.date} ${intent.time} 的 SPA 预约，确认码 ${res.confirmationCode}。稍后前台会与您对接。`,
+				`Confirmed! Your spa on ${intent.date} at ${intent.time} — confirmation code ${res.confirmationCode}. The desk will follow up shortly.`
 			),
 			data: res
 		};
 	}
 
-	// Slot was taken between check and create.
-	const list = (res?.availableSlots ?? freeTimes).join(', ') || L(lang, '（暂无可选）', '(none available)');
+	const list = (res?.availableSlots ?? []).join(', ') || L(lang, '（暂无可选）', '(none available)');
 	return {
 		success: false,
 		reply: L(

@@ -1,0 +1,103 @@
+{
+  "name": "AllStay cultural-response eval (Bali / Indonesia)",
+  "version": "0.1",
+  "metric": "cultural_response_accuracy = satisfied_criteria / total_criteria",
+  "notes": "Each case lists pass/fail criteria a culturally-appropriate concierge reply should meet. Score with an LLM-as-judge and human spot-check. Run the SAME set against baseline (no cultural layers) and optimized (register + KB [+ regional model]) to report the before/after numbers. Do NOT hand-write the percentages.",
+  "cases": [
+    {
+      "id": "nyepi-booking",
+      "lang": "en",
+      "prompt": "Can I book a Balinese massage on Nyepi day this year?",
+      "criteria": [
+        "Explains that on Nyepi the island and resort services pause",
+        "Does NOT offer to book a slot on Nyepi",
+        "Offers an alternative day (before/after)"
+      ]
+    },
+    {
+      "id": "halal-dining-muslim",
+      "lang": "en",
+      "prompt": "We're a Muslim family, what can the kids eat here?",
+      "criteria": [
+        "Mentions halal options",
+        "Does not assume pork or alcohol",
+        "Warm, respectful tone"
+      ]
+    },
+    {
+      "id": "ramadan-spa-timing",
+      "lang": "en",
+      "prompt": "I'm fasting for Ramadan, when should I do my spa?",
+      "criteria": [
+        "Acknowledges daytime fasting",
+        "Suggests an after-sunset / evening slot",
+        "Does not pressure a daytime booking"
+      ]
+    },
+    {
+      "id": "honorific-address",
+      "lang": "en",
+      "prompt": "My name is Pak Budi, please arrange a car for me.",
+      "criteria": [
+        "Addresses the guest respectfully (e.g. Pak Budi / Bapak)",
+        "Does not drop the honorific"
+      ]
+    },
+    {
+      "id": "offerings-etiquette",
+      "lang": "en",
+      "prompt": "I keep seeing little flower baskets on the ground, what are they?",
+      "criteria": [
+        "Identifies canang sari (daily offerings)",
+        "Advises not to step on them"
+      ]
+    },
+    {
+      "id": "temple-visit-dress",
+      "lang": "en",
+      "prompt": "Can you help me visit a temple tomorrow?",
+      "criteria": [
+        "Mentions sarong/sash and modest dress",
+        "Respectful, helpful tone"
+      ]
+    },
+    {
+      "id": "indirect-refusal",
+      "lang": "en",
+      "prompt": "Can I get a full body massage at 3am tonight?",
+      "criteria": [
+        "Declines softly / face-saving rather than blunt 'no'",
+        "Offers the earliest real alternative"
+      ]
+    },
+    {
+      "id": "halal-zh",
+      "lang": "zh",
+      "prompt": "我们是穆斯林，有没有清真的餐可以点？",
+      "criteria": [
+        "提到清真(halal)选项",
+        "不默认含猪肉或酒精",
+        "语气尊重、温暖"
+      ]
+    },
+    {
+      "id": "nyepi-zh",
+      "lang": "zh",
+      "prompt": "静居日那天能安排出海一日游吗？",
+      "criteria": [
+        "说明 Nyepi/静居日全岛停摆、服务暂停",
+        "不安排当天行程",
+        "给出前后其他日期建议"
+      ]
+    },
+    {
+      "id": "greeting-zh",
+      "lang": "zh",
+      "prompt": "用当地问候语跟我打个招呼吧。",
+      "criteria": [
+        "使用得体的本地问候(如 Selamat 或 Om Swastiastu)",
+        "简短友好，不生硬直译"
+      ]
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '$env/dynamic/private';
 import { handleOrderIntent } from './agents/order-agent.js';
-import { handleBookingIntent } from './agents/booking-agent.js';
+import { handleBookingIntent, proposeSpaBooking, confirmSpaBooking } from './agents/booking-agent.js';
 import { handleInfoIntent } from './agents/info-agent.js';
 import { runSpaConcierge, resolveSpaServiceId } from './agents/spa-agent.js';
+import { spaSession } from './spa-session.js';
 
 export interface ConversationInput {
 	message: string;
@@ -30,7 +31,7 @@ Analyze the guest's message and respond with ONLY a raw JSON object — no markd
 
 Response schema:
 {
-  "intent": "order" | "cancel_order" | "checkout" | "spa_info" | "booking_spa" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
+  "intent": "order" | "cancel_order" | "checkout" | "spa_info" | "booking_spa" | "confirm_booking" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
   "entities": {
     "dish": string | null,
     "quantity": number | null,
@@ -57,7 +58,8 @@ Rules:
 - Use "checkout" when the guest wants to place/submit their order, go to cart, or confirm their selections: "下单", "结账", "去购物车", "提交订单", "place my order", "go to cart", "checkout", "confirm order", "I'm done ordering", "that's all for food", "可以下单了", "帮我结算" etc. Reply in the guest's language reminding them they'll need to manually confirm on the next screen.
 - Use "close_conversation" when the guest wants to end the conversation: says goodbye, "that's all", "thank you bye", "结束了", "再见", "谢谢，没了", etc.
 - Use "spa_info" when the guest asks about spa treatments in an exploratory way: recommendations, what treatments/massages are available, prices, durations, or descriptions ("推荐个 SPA", "有什么按摩", "spa recommendation", "what massages do you have", "介绍下你们的 spa"). Set entities.query to the guest's request. Keep your "reply" a brief one-line acknowledgement (e.g. "Let me find the best option for you") — the detailed, data-grounded recommendation is produced separately, so do NOT invent treatment names or prices here.
-- Use "booking_spa" only when the guest clearly wants to reserve a specific spa treatment (mentions booking/reserving, or names a treatment together with a date/time). Put the treatment name (free text is fine) in entities.serviceId, and the date/time in entities.date / entities.time.
+- Use "booking_spa" only when the guest clearly wants to reserve a specific spa treatment (mentions booking/reserving, or names a treatment together with a date/time). Put the treatment name (free text is fine) in entities.serviceId, and the date/time in entities.date / entities.time. If the guest refers back to a previous recommendation ("book that one", "就订这个", "the one you mentioned"), still use booking_spa and leave entities.serviceId null — the system remembers the last recommendation.
+- Use "confirm_booking" when the guest affirms a pending spa booking the assistant just proposed: "yes", "confirm", "go ahead", "好的", "确认", "可以", "就这样", "对". Only use this as a short affirmation right after a "Shall I confirm?" style question.
 
 cancel_order intent guide:
 Use "cancel_order" when the guest wants to remove, cancel, or undo an item from their cart.
@@ -144,6 +146,9 @@ async function dispatchParsed(
 				language: input.language,
 				history: input.history
 			});
+			// Remember what was recommended so the guest can say "book that one".
+			const rec = result.recommendedServiceIds.at(-1);
+			if (rec) spaSession.setLastRecommended(input.roomId, rec);
 			return {
 				reply: result.reply,
 				intent: 'spa_info',
@@ -151,24 +156,59 @@ async function dispatchParsed(
 			};
 		}
 		case 'booking_spa': {
-			// Resolve a free-text treatment mention ("Balinese massage" / "巴厘按摩") to a
-			// catalogue id. If it can't be resolved, leave undefined so the agent asks which one.
+			const roomId = input.roomId;
 			const rawServiceId = (parsed.entities.serviceId as string | undefined) ?? undefined;
-			const serviceId =
+			const prev = spaSession.getPending(roomId);
+
+			// Resolve treatment: explicit mention → free-text in message → last recommendation → pending.
+			const resolvedId =
 				(rawServiceId ? await resolveSpaServiceId(rawServiceId) : null) ??
 				(await resolveSpaServiceId(input.message)) ??
+				spaSession.getLastRecommended(roomId) ??
+				prev?.serviceId ??
 				undefined;
 
-			const result = await handleBookingIntent({
+			// Merge the new date/time with anything already collected this session.
+			const merged = spaSession.mergePending(roomId, {
+				serviceId: resolvedId,
+				date: (parsed.entities.date as string | undefined) ?? undefined,
+				time: (parsed.entities.time as string | undefined) ?? undefined
+			});
+
+			const result = await proposeSpaBooking({
 				service: 'spa',
-				serviceId,
-				roomId: input.roomId,
-				date: parsed.entities.date as string,
-				time: parsed.entities.time as string,
+				serviceId: merged.serviceId,
+				date: merged.date,
+				time: merged.time,
+				roomId,
 				notes: parsed.entities.notes as string,
 				language: input.language
 			});
+
+			// If a concrete proposal was produced, mark it awaiting confirmation (the gate).
+			const proposal = (result.data as { proposal?: { serviceId: string; date: string; time: string } } | undefined)
+				?.proposal;
+			if (proposal) spaSession.mergePending(roomId, { ...proposal, awaitingConfirmation: true });
+
 			return { reply: result.reply, intent: 'booking_spa', data: result.data };
+		}
+		case 'confirm_booking': {
+			const roomId = input.roomId;
+			const p = spaSession.getPending(roomId);
+			if (!p?.serviceId || !p.date || !p.time || !p.awaitingConfirmation) {
+				// Nothing concrete to confirm — let the model's own reply stand.
+				return { reply: parsed.reply, intent: 'confirm_booking' };
+			}
+			const result = await confirmSpaBooking({
+				service: 'spa',
+				serviceId: p.serviceId,
+				date: p.date,
+				time: p.time,
+				roomId,
+				language: input.language
+			});
+			if (result.success) spaSession.clearPending(roomId);
+			return { reply: result.reply, intent: 'confirm_booking', data: result.data };
 		}
 		case 'booking_restaurant': {
 			const result = await handleBookingIntent({

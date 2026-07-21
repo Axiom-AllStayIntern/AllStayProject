@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '$env/dynamic/private';
 import { callMcpTool } from '../tools/mcp-client.js';
+import { culturalRegister } from '../cultural/cultural-register.js';
+import { retrieveCulturalFacts, renderCulturalFacts } from '../cultural/cultural-kb.js';
 
 /**
  * SPA concierge agent.
@@ -101,11 +103,21 @@ export async function runSpaConcierge(input: SpaConciergeInput): Promise<SpaConc
 	const recommendedServiceIds: string[] = [];
 	const MAX_HOPS = 4;
 
+	// Layer 1 (register control) + Layer 2 (retrieved Saka/Bali cultural facts).
+	const system = [
+		SPA_SYSTEM,
+		langNote(input.language),
+		culturalRegister(input.language),
+		renderCulturalFacts(retrieveCulturalFacts(input.message))
+	]
+		.filter(Boolean)
+		.join('\n\n');
+
 	for (let hop = 0; hop < MAX_HOPS; hop++) {
 		const res = await client.messages.create({
 			model: env.AI_MODEL ?? 'claude-sonnet-4-6',
 			max_tokens: 1024,
-			system: `${SPA_SYSTEM}\n\n${langNote(input.language)}`,
+			system,
 			tools: SPA_TOOLS,
 			messages
 		});
@@ -195,7 +207,7 @@ export async function resolveSpaServiceId(text: string): Promise<string | null> 
 
 		// Chinese 2-gram overlap (handles partial names like "巴厘按摩" vs "传统巴厘按摩").
 		for (let i = 0; i + 2 <= s.nameZh.length; i++) {
-			const gram = s.nameZh.slice(i, i + 2);a
+			const gram = s.nameZh.slice(i, i + 2);
 			if (/^[一-鿿]{2}$/.test(gram) && text.includes(gram)) score += 2;
 		}
 
