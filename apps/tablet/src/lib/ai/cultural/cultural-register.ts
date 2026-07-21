@@ -5,7 +5,7 @@
 // culturally appropriate rather than literal translations. It is injected into
 // the spa agent's system prompt (and can be reused by other agents).
 
-export type Lang = 'en' | 'zh';
+export type Lang = 'en' | 'zh' | 'id';
 
 /**
  * Register / tone guidance. Applied for every guest; the honorific and

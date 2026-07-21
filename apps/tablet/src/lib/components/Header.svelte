@@ -30,6 +30,7 @@
 		<div class="langtoggle lite" role="tablist">
 			<button class:on={$language === 'en'} on:click={() => language.set('en')}>EN</button>
 			<button class:on={$language === 'zh'} on:click={() => language.set('zh')}>中文</button>
+			<button class:on={$language === 'id'} on:click={() => language.set('id')}>ID</button>
 		</div>
 		<button class="icon-btn" on:click={() => goto('/cart')} aria-label="Cart">
 			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">

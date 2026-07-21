@@ -23,7 +23,7 @@
 			confirm: '确认订单'
 		}
 	} as const;
-	$: t = T[lang];
+	$: t = T[lang as keyof typeof T] ?? T.en;
 
 	function fmtIDR(n: number) {
 		return n.toLocaleString('en-US').replace(/,/g, ' ') + ' IDR';

@@ -26,7 +26,7 @@ const INTENT_ROUTES: Record<string, string> = {
 
 export async function processVoiceInput(
 	audioBlob: Blob,
-	_hint: 'en' | 'zh' = 'zh',
+	_hint: 'en' | 'zh' | 'id' = 'zh',
 	onReplyChunk?: (partial: string) => void   // called with cumulative reply as it streams
 ): Promise<AIResponse> {
 	// ── 1. Speech-to-text (Whisper auto-detects language) ────────────────────
@@ -38,7 +38,7 @@ export async function processVoiceInput(
 		const err = await sttRes.json().catch(() => ({}));
 		throw new Error((err as { message?: string }).message ?? 'Speech recognition failed');
 	}
-	const { text: userText, detected } = (await sttRes.json()) as { text: string; detected: 'en' | 'zh' };
+	const { text: userText, detected } = (await sttRes.json()) as { text: string; detected: 'en' | 'zh' | 'id' };
 
 	// Auto-switch UI language to match what the user spoke
 	const currentLang = get(languageStore);

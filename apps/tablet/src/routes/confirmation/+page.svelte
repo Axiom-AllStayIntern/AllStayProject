@@ -33,7 +33,7 @@
 			totalLabel: '总计', returnHome: '返回首页'
 		}
 	} as const;
-	$: t = T[lang];
+	$: t = T[lang as keyof typeof T] ?? T.en;
 
 	function handleReturn() {
 		goto('/home');

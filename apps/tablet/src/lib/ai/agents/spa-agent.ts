@@ -33,10 +33,10 @@ Style:
 - Keep replies short (2–3 sentences), warm and specific.
 - Do NOT book anything and do NOT ask for a credit card — booking is confirmed on a separate step. You may suggest a next step like offering to check availability.`;
 
-function langNote(language: 'en' | 'zh'): string {
-	return language === 'zh'
-		? 'Reply in Simplified Chinese.'
-		: 'Reply in English.';
+function langNote(language: 'en' | 'zh' | 'id'): string {
+	if (language === 'zh') return 'Reply in Simplified Chinese.';
+	if (language === 'id') return 'Reply in Bahasa Indonesia (warm, polite; use Bapak/Ibu where natural).';
+	return 'Reply in English.';
 }
 
 // ── Tool schemas exposed to the model (read-only) ───────────────────────────
@@ -80,7 +80,7 @@ const SPA_READ_TOOLS = new Set(['list_spa_services', 'get_spa_service', 'check_s
 
 export interface SpaConciergeInput {
 	message: string;
-	language: 'en' | 'zh';
+	language: 'en' | 'zh' | 'id';
 	history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 

@@ -1,35 +1,38 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { cartItemCount } from '$lib/stores/cart.js';
+	import { language } from '$lib/stores/language.js';
 
 	const tabs = [
 		{
-			path: '/home', label: 'Home', labelZh: '首页',
+			path: '/home', label: 'Home', labelZh: '首页', labelId: 'Beranda',
 			icon: `<path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/>`
 		},
 		{
-			path: '/dining', label: 'Dining', labelZh: '餐饮',
+			path: '/dining', label: 'Dining', labelZh: '餐饮', labelId: 'Makan',
 			icon: `<path d="M4 3v18M4 12h6c1 0 2-1 2-2V4M18 3v8a3 3 0 0 1-3 3v7"/>`
 		},
 		{
-			path: '/spa', label: 'Spa', labelZh: '水疗',
+			path: '/spa', label: 'Spa', labelZh: '水疗', labelId: 'Spa',
 			icon: `<path d="M12 2c2 4-2 4 0 8s-2 4 0 8M5 8c2 4-2 4 0 8M19 8c2 4-2 4 0 8"/>`
 		},
 		{
-			path: '/restaurants', label: 'Restaurants', labelZh: '餐厅',
+			path: '/restaurants', label: 'Restaurants', labelZh: '餐厅', labelId: 'Restoran',
 			icon: `<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3"/>`
 		},
 		{
-			path: '/explore', label: 'Explore', labelZh: '探索',
+			path: '/explore', label: 'Explore', labelZh: '探索', labelId: 'Jelajah',
 			icon: `<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>`
 		},
 		{
-			path: '/cart', label: 'Cart', labelZh: '购物车', hasCart: true,
+			path: '/cart', label: 'Cart', labelZh: '购物车', labelId: 'Keranjang', hasCart: true,
 			icon: `<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>`
 		}
 	];
 
 	$: current = $page.url.pathname;
+	$: label = (tab: { label: string; labelZh: string; labelId: string }) =>
+		$language === 'zh' ? tab.labelZh : $language === 'id' ? tab.labelId : tab.label;
 </script>
 
 <nav class="tabs">
@@ -44,7 +47,7 @@
 					<span class="tab-badge">{$cartItemCount > 99 ? '99+' : $cartItemCount}</span>
 				{/if}
 			</span>
-			<span class="tab-label">{tab.label}</span>
+			<span class="tab-label">{label(tab)}</span>
 		</a>
 	{/each}
 </nav>

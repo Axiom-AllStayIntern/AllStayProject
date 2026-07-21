@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { locale } from 'svelte-i18n';
 
-export type Language = 'en' | 'zh';
+export type Language = 'en' | 'zh' | 'id';
 
 function createLanguageStore() {
 	const { subscribe, set } = writable<Language>('en');
@@ -10,8 +10,10 @@ function createLanguageStore() {
 		subscribe,
 		set(lang: Language) {
 			set(lang);
-			locale.set(lang);
-			// TODO: persist to Capacitor Preferences
+			// The AI/voice language can be 'id', but the UI dictionary is only en/zh
+			// for now — fall the UI locale back to English until an 'id' dictionary exists.
+			locale.set(lang === 'id' ? 'en' : lang);
+			// TODO: persist to Capacitor Preferences; add 'id' UI dictionary
 		},
 		toggle() {
 			this.subscribe((current) => {

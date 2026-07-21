@@ -12,7 +12,7 @@ export interface BookingIntent {
 	partySize?: number;
 	notes?: string;
 	therapistGenderPref?: 'male' | 'female' | 'no_preference';
-	language?: 'en' | 'zh';
+	language?: 'en' | 'zh' | 'id';
 }
 
 export interface AgentResult {
@@ -21,8 +21,11 @@ export interface AgentResult {
 	data?: unknown;
 }
 
-// Small localization helper for agent-composed replies.
-const L = (lang: 'en' | 'zh' | undefined, zh: string, en: string): string => (lang === 'zh' ? zh : en);
+// Small localization helper for agent-composed replies. `id` (Bahasa Indonesia)
+// is optional per string; when omitted it falls back to English.
+type Lang = 'en' | 'zh' | 'id' | undefined;
+const L = (lang: Lang, zh: string, en: string, id?: string): string =>
+	lang === 'zh' ? zh : lang === 'id' ? (id ?? en) : en;
 
 export async function handleBookingIntent(intent: BookingIntent): Promise<AgentResult> {
 	// SPA uses a two-step flow (propose → confirm). Keep the generic direct-book
@@ -38,11 +41,12 @@ interface SpaSlot {
 	isAvailable: boolean;
 }
 
-async function getSpaServiceName(serviceId: string, lang: 'en' | 'zh' | undefined): Promise<string> {
+async function getSpaServiceName(serviceId: string, lang: Lang): Promise<string> {
 	const r = await callMcpTool({ server: 'spa', tool: 'get_spa_service', params: { service_id: serviceId } });
-	const svc = (r.data as { service?: { nameEn?: string; nameZh?: string } })?.service;
+	const svc = (r.data as { service?: { nameEn?: string; nameZh?: string; nameId?: string } })?.service;
 	if (!svc) return serviceId;
-	return (lang === 'zh' ? svc.nameZh : svc.nameEn) ?? svc.nameEn ?? serviceId;
+	const localized = lang === 'zh' ? svc.nameZh : lang === 'id' ? svc.nameId : svc.nameEn;
+	return localized ?? svc.nameEn ?? serviceId;
 }
 
 export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentResult> {
@@ -51,7 +55,7 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 	if (!intent.serviceId) {
 		return {
 			success: false,
-			reply: L(lang, '好的，请问您想预约哪一项 SPA 疗程？', 'Sure — which spa treatment would you like?')
+			reply: L(lang, '好的，请问您想预约哪一项 SPA 疗程？', 'Sure — which spa treatment would you like?', 'Baik, perawatan spa mana yang Anda inginkan?')
 		};
 	}
 	if (!intent.date || !intent.time) {
@@ -61,7 +65,8 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 			reply: L(
 				lang,
 				`好的，${name}。请告诉我想约哪天、几点？`,
-				`Great — ${name}. What date and time would you like?`
+				`Great — ${name}. What date and time would you like?`,
+				`Baik, ${name}. Untuk tanggal dan jam berapa?`
 			),
 			data: { need: ['date', 'time'] }
 		};
@@ -75,7 +80,7 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 	if (!avail.success) {
 		return {
 			success: false,
-			reply: L(lang, '暂时查不到 SPA 档期，请稍后再试。', "I couldn't check spa availability right now — please try again.")
+			reply: L(lang, '暂时查不到 SPA 档期，请稍后再试。', "I couldn't check spa availability right now — please try again.", 'Maaf, saya belum bisa memeriksa ketersediaan spa saat ini — silakan coba lagi.')
 		};
 	}
 
@@ -84,13 +89,14 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 	const chosen = slots.find((s) => s.time === intent.time);
 
 	if (!chosen || !chosen.isAvailable) {
-		const list = freeTimes.join(', ') || L(lang, '（当天暂无可预约时段）', '(no open times that day)');
+		const list = freeTimes.join(', ') || L(lang, '（当天暂无可预约时段）', '(no open times that day)', '(tidak ada jam tersedia hari itu)');
 		return {
 			success: false,
 			reply: L(
 				lang,
 				`${intent.time} 这个时段约不到了。当天可选：${list}。`,
-				`${intent.time} isn't available. Open times that day: ${list}.`
+				`${intent.time} isn't available. Open times that day: ${list}.`,
+				`${intent.time} tidak tersedia. Jam yang tersedia hari itu: ${list}.`
 			),
 			data: { availableSlots: freeTimes }
 		};
@@ -103,7 +109,8 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 		reply: L(
 			lang,
 			`我为您找到 ${intent.date} ${intent.time} 的 ${name}。需要我确认预约吗？`,
-			`I found ${name} on ${intent.date} at ${intent.time}. Shall I confirm the booking?`
+			`I found ${name} on ${intent.date} at ${intent.time}. Shall I confirm the booking?`,
+			`Saya menemukan ${name} pada ${intent.date} pukul ${intent.time}. Konfirmasikan pemesanannya?`
 		),
 		data: { proposal: { serviceId: intent.serviceId, date: intent.date, time: intent.time } }
 	};
@@ -117,7 +124,7 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 	if (!intent.serviceId || !intent.date || !intent.time) {
 		return {
 			success: false,
-			reply: L(lang, '还没有待确认的预约，请先告诉我疗程、日期和时间。', 'There is nothing to confirm yet — please tell me the treatment, date and time first.')
+			reply: L(lang, '还没有待确认的预约，请先告诉我疗程、日期和时间。', 'There is nothing to confirm yet — please tell me the treatment, date and time first.', 'Belum ada pemesanan untuk dikonfirmasi — mohon sebutkan perawatan, tanggal, dan jam dahulu.')
 		};
 	}
 
@@ -136,7 +143,7 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 	if (!book.success) {
 		return {
 			success: false,
-			reply: L(lang, '预约没成功，请换个时间或联系前台。', "The booking didn't go through — please try another time or contact reception.")
+			reply: L(lang, '预约没成功，请换个时间或联系前台。', "The booking didn't go through — please try another time or contact reception.", 'Pemesanan gagal — silakan coba jam lain atau hubungi resepsionis.')
 		};
 	}
 
@@ -147,19 +154,21 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 			reply: L(
 				lang,
 				`已确认！${intent.date} ${intent.time} 的 SPA 预约，确认码 ${res.confirmationCode}。稍后前台会与您对接。`,
-				`Confirmed! Your spa on ${intent.date} at ${intent.time} — confirmation code ${res.confirmationCode}. The desk will follow up shortly.`
+				`Confirmed! Your spa on ${intent.date} at ${intent.time} — confirmation code ${res.confirmationCode}. The desk will follow up shortly.`,
+				`Terkonfirmasi! Spa Anda pada ${intent.date} pukul ${intent.time} — kode konfirmasi ${res.confirmationCode}. Resepsionis akan menindaklanjuti.`
 			),
 			data: res
 		};
 	}
 
-	const list = (res?.availableSlots ?? []).join(', ') || L(lang, '（暂无可选）', '(none available)');
+	const list = (res?.availableSlots ?? []).join(', ') || L(lang, '（暂无可选）', '(none available)', '(tidak ada yang tersedia)');
 	return {
 		success: false,
 		reply: L(
 			lang,
 			`抱歉，这个时段刚被占用了。当天可选：${list}。`,
-			`Sorry, that slot was just taken. Open times that day: ${list}.`
+			`Sorry, that slot was just taken. Open times that day: ${list}.`,
+			`Maaf, jam itu baru saja terisi. Jam yang tersedia hari itu: ${list}.`
 		),
 		data: res
 	};

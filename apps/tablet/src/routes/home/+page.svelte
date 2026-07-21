@@ -33,17 +33,32 @@
 			chat: '对话',
 			greetMorning: '早上好', greetAfternoon: '下午好', greetEvening: '晚上好',
 			guest: '贵宾', weather: '晴 · 29°C', checkout: '退房 12:00'
+		},
+		id: {
+			howCanWe: 'Ada yang bisa kami bantu hari ini?', services: 'Layanan',
+			dining: 'Layanan Kamar', diningDesc: 'Menu 24/7 · 20–40 mnt',
+			spa: 'Spa & Kebugaran', spaDesc: 'Perawatan · 9:00–22:00',
+			restaurants: 'Restoran Hotel', restaurantsDesc: '3 tempat · Pesan meja',
+			amenities: 'Fasilitas', amenitiesDesc: 'Kolam, gym, laundry & lainnya',
+			explore: 'Jelajahi Bali', exploreDesc: 'Tur, transportasi & tips',
+			cart: 'Keranjang Saya', cartEmptyLine: 'Belum ada item',
+			conciergeTitle: 'Butuh sesuatu? Concierge siap membantu.',
+			conciergeSub: 'Ari, kepala pelayan Anda hari ini · membalas < 2 menit',
+			chat: 'Obrolan',
+			greetMorning: 'Selamat Pagi', greetAfternoon: 'Selamat Siang', greetEvening: 'Selamat Malam',
+			guest: 'Tamu', weather: 'Cerah · 29°C', checkout: 'Check-out 12:00'
 		}
 	} as const;
 
-	$: t = T[$language];
+	// Fall back to English for any language without a full home dictionary.
+	$: t = T[$language] ?? T.en;
 
 	$: greeting = (() => {
 		const h = new Date().getHours();
 		return h < 12 ? t.greetMorning : h < 18 ? t.greetAfternoon : t.greetEvening;
 	})();
 
-	$: dateStr = new Date().toLocaleDateString($language === 'zh' ? 'zh-CN' : 'en-GB', {
+	$: dateStr = new Date().toLocaleDateString($language === 'zh' ? 'zh-CN' : $language === 'id' ? 'id-ID' : 'en-GB', {
 		weekday: 'long', day: 'numeric', month: 'long'
 	});
 

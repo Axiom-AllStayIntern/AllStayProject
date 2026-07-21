@@ -52,16 +52,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		}) as any;
 
 		// Map Whisper language names → app language codes
-		const LANG_MAP: Record<string, 'en' | 'zh'> = {
+		const LANG_MAP: Record<string, 'en' | 'zh' | 'id'> = {
 			chinese: 'zh', cantonese: 'zh', mandarin: 'zh',
-			english: 'en'
+			english: 'en',
+			indonesian: 'id', malay: 'id'   // Whisper sometimes tags Bahasa Indonesia as "malay"
 		};
 		// Whisper occasionally hallucinates Japanese/Korean when given noise — discard those
 		const detectedLang: string = transcription.language ?? '';
 		if (detectedLang && !LANG_MAP[detectedLang]) {
 			return json({ text: '', detected: 'en' });
 		}
-		const detected: 'en' | 'zh' = LANG_MAP[detectedLang] ?? 'en';
+		const detected: 'en' | 'zh' | 'id' = LANG_MAP[detectedLang] ?? 'en';
 
 		const raw: string = transcription.text ?? '';
 

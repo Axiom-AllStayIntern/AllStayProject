@@ -9,7 +9,7 @@ import { spaSession } from './spa-session.js';
 export interface ConversationInput {
 	message: string;
 	roomId: string;
-	language: 'en' | 'zh';
+	language: 'en' | 'zh' | 'id';
 	history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
@@ -27,25 +27,12 @@ You help guests with:
 4. Transport arrangements
 5. General hotel information
 
-Analyze the guest's message and respond with ONLY a raw JSON object — no markdown, no code fences, no explanation outside the JSON.
+Analyze the guest's message and answer by calling the "respond" tool. Provide:
+- intent: one of order, cancel_order, checkout, spa_info, booking_spa, confirm_booking, booking_restaurant, booking_transport, info, switch_language, close_conversation, other
+- entities: extracted fields (dish, quantity, specialInstructions, serviceId, date, time, partySize, notes, query, foodTag ["noodles"|"rice"|"sandwich"|"sweet"|"fruit"|"drinks"]). Use null when a field is not present.
+- reply: your warm, concise conversational response in the same language as the guest
 
-Response schema:
-{
-  "intent": "order" | "cancel_order" | "checkout" | "spa_info" | "booking_spa" | "confirm_booking" | "booking_restaurant" | "booking_transport" | "info" | "switch_language" | "close_conversation" | "other",
-  "entities": {
-    "dish": string | null,
-    "quantity": number | null,
-    "specialInstructions": string | null,
-    "serviceId": string | null,
-    "date": string | null,
-    "time": string | null,
-    "partySize": number | null,
-    "notes": string | null,
-    "query": string | null,
-    "foodTag": "noodles" | "rice" | "sandwich" | "sweet" | "fruit" | "drinks" | null
-  },
-  "reply": "Your warm, concise conversational response in the same language as the guest"
-}
+Always call the respond tool — do not answer in plain text.
 
 Rules:
 - reply must be short (1–2 sentences), friendly, and in the guest's language
@@ -103,9 +90,12 @@ function buildMessages(input: ConversationInput): Anthropic.MessageParam[] {
 }
 
 function buildSystem(input: ConversationInput): string {
-	const langNote = input.language === 'zh'
-		? 'IMPORTANT: The guest is speaking Chinese. Your "reply" field MUST be in Chinese (Simplified). Do not use English.'
-		: 'IMPORTANT: The guest is speaking English. Your "reply" field MUST be in English. Do not use Chinese.';
+	const langNote =
+		input.language === 'zh'
+			? 'IMPORTANT: The guest is speaking Chinese. Your "reply" field MUST be in Chinese (Simplified).'
+			: input.language === 'id'
+				? 'IMPORTANT: The guest is speaking Indonesian. Your "reply" field MUST be in Bahasa Indonesia, warm and polite (use Bapak/Ibu where natural).'
+				: 'IMPORTANT: The guest is speaking English. Your "reply" field MUST be in English.';
 	return `${SYSTEM_PROMPT}\n\n${langNote}`;
 }
 
@@ -251,13 +241,75 @@ async function dispatchParsed(
 	}
 }
 
-function parseRaw(raw: string): { intent: string; entities: Record<string, unknown>; reply: string } | null {
-	const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-	try {
-		return JSON.parse(text);
-	} catch {
-		return null;
+interface ParsedResponse {
+	intent: string;
+	entities: Record<string, unknown>;
+	reply: string;
+}
+
+// Structured-output tool. Forcing tool_choice to this guarantees a valid,
+// schema-shaped object — no more hand-parsing raw JSON text.
+const RESPOND_TOOL: Anthropic.Tool = {
+	name: 'respond',
+	description: 'Return the classified intent, extracted entities, and the spoken reply to the guest.',
+	input_schema: {
+		type: 'object',
+		properties: {
+			intent: {
+				type: 'string',
+				enum: [
+					'order', 'cancel_order', 'checkout', 'spa_info', 'booking_spa', 'confirm_booking',
+					'booking_restaurant', 'booking_transport', 'info', 'switch_language',
+					'close_conversation', 'other'
+				]
+			},
+			entities: {
+				type: 'object',
+				description:
+					'Extracted fields: dish, quantity, specialInstructions, serviceId, date, time, partySize, notes, query, foodTag. Omit or set null when not present.'
+			},
+			reply: { type: 'string', description: "Warm, concise reply in the guest's language." }
+		},
+		required: ['intent', 'reply']
 	}
+};
+
+function fallbackReply(language: 'en' | 'zh' | 'id'): string {
+	if (language === 'zh') return '抱歉，我没太听清，可以再说一次吗？';
+	if (language === 'id') return 'Maaf, saya kurang menangkap — bisa diulang?';
+	return "Sorry, I didn't quite catch that — could you say it again?";
+}
+
+// Pull the `respond` tool call out of a completed message's content blocks.
+function extractRespond(content: Anthropic.ContentBlock[]): ParsedResponse | null {
+	const block = content.find(
+		(b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === 'respond'
+	);
+	if (!block) return null;
+	const input = block.input as Partial<ParsedResponse> | undefined;
+	if (!input || typeof input.intent !== 'string') return null;
+	return {
+		intent: input.intent,
+		entities: (input.entities as Record<string, unknown>) ?? {},
+		reply: typeof input.reply === 'string' ? input.reply : ''
+	};
+}
+
+// Tolerant parse of the streamed tool-input JSON (valid once the stream completes).
+function safeParseRespond(json: string): ParsedResponse | null {
+	try {
+		const o = JSON.parse(json);
+		if (o && typeof o.intent === 'string') {
+			return {
+				intent: o.intent,
+				entities: (o.entities as Record<string, unknown>) ?? {},
+				reply: typeof o.reply === 'string' ? o.reply : ''
+			};
+		}
+	} catch {
+		/* incomplete / invalid */
+	}
+	return null;
 }
 
 // Extracts new characters from the "reply" field of a partially-streamed JSON string.
@@ -303,12 +355,13 @@ export async function processConversation(input: ConversationInput): Promise<Con
 		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
 		max_tokens: 1024,
 		system: buildSystem(input),
-		messages: buildMessages(input)
+		messages: buildMessages(input),
+		tools: [RESPOND_TOOL],
+		tool_choice: { type: 'tool', name: 'respond' }
 	});
 
-	const raw = response.content[0].type === 'text' ? response.content[0].text : '';
-	const parsed = parseRaw(raw);
-	if (!parsed) return { reply: raw };
+	const parsed = extractRespond(response.content);
+	if (!parsed) return { reply: fallbackReply(input.language) };
 	return dispatchParsed(parsed, input);
 }
 
@@ -319,20 +372,24 @@ export async function streamConversation(
 	onReplyChunk: (chunk: string) => void
 ): Promise<ConversationOutput> {
 	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-	let accumulated = '';
+	let toolJson = '';
 	let lastReplyLen = 0;
 
 	const stream = client.messages.stream({
 		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
 		max_tokens: 1024,
 		system: buildSystem(input),
-		messages: buildMessages(input)
+		messages: buildMessages(input),
+		tools: [RESPOND_TOOL],
+		tool_choice: { type: 'tool', name: 'respond' }
 	});
 
+	// With tool_choice forced, the model streams the tool input as JSON deltas.
+	// We accumulate it and extract the "reply" field incrementally for the UI.
 	for await (const event of stream) {
-		if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-			accumulated += event.delta.text;
-			const { chars, newLen } = extractReplyProgress(accumulated, lastReplyLen);
+		if (event.type === 'content_block_delta' && event.delta.type === 'input_json_delta') {
+			toolJson += event.delta.partial_json;
+			const { chars, newLen } = extractReplyProgress(toolJson, lastReplyLen);
 			if (chars) {
 				onReplyChunk(chars);
 				lastReplyLen = newLen;
@@ -340,7 +397,17 @@ export async function streamConversation(
 		}
 	}
 
-	const parsed = parseRaw(accumulated);
-	if (!parsed) return { reply: accumulated };
+	// Prefer the tolerant parse of the accumulated tool JSON; fall back to the
+	// SDK's finalised message; finally a friendly fallback (never dump raw text).
+	let parsed = safeParseRespond(toolJson);
+	if (!parsed) {
+		try {
+			const final = await stream.finalMessage();
+			parsed = extractRespond(final.content);
+		} catch {
+			/* stream error already surfaced */
+		}
+	}
+	if (!parsed) return { reply: fallbackReply(input.language) };
 	return dispatchParsed(parsed, input);
 }

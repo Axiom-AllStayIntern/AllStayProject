@@ -1,6 +1,6 @@
 export interface InfoIntent {
 	query: string;
-	language: 'en' | 'zh';
+	language: 'en' | 'zh' | 'id';
 }
 
 export interface AgentResult {
