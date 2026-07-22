@@ -20,7 +20,11 @@ export const CreateBookingSchema = z.object({
 	date: z.string().min(1),
 	time: z.string().min(1),
 	therapist_gender_preference: z.enum(['male', 'female', 'no_preference']).optional(),
-	notes: z.string().max(500).optional()
+	notes: z.string().max(500).optional(),
+	// Guest profile passed for the server-side constraint gate (defense in depth).
+	pregnant: z.boolean().optional(),
+	guest_conditions: z.array(z.string()).optional(),
+	party_size: z.number().int().positive().optional()
 });
 
 export const CancelBookingSchema = z.object({

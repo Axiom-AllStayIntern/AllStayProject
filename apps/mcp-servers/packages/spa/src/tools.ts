@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { spaRepo } from './data/spa-repo.js';
+import { guardBooking } from './constraints.js';
 import {
 	ListServicesSchema,
 	GetServiceSchema,
@@ -56,6 +57,23 @@ export function registerTools(server: McpServer) {
 		CreateBookingSchema.shape,
 		async (args) => {
 			const p = CreateBookingSchema.parse(args);
+
+			// FINAL server-side safety gate — never write a booking that violates a
+			// hard rule, regardless of what the client did. Defense in depth.
+			const service = await spaRepo.getService(p.service_id);
+			const guard = guardBooking({
+				date: p.date,
+				time: p.time,
+				contraindications: service?.contraindications ?? [],
+				maxPartySize: service?.maxPartySize,
+				partySize: p.party_size,
+				pregnant: p.pregnant,
+				guestConditions: p.guest_conditions
+			});
+			if (!guard.ok) {
+				return textResult({ ok: false, rejected: true, code: guard.code, reason: guard.reason });
+			}
+
 			const result = await spaRepo.createBooking({
 				serviceId: p.service_id,
 				roomId: p.room_id,

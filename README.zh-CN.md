@@ -176,6 +176,9 @@ npm run preview --workspace=apps/tablet
 | `ANTHROPIC_API_KEY` | AI 对话接口 | 基础 UI 测试不需要 |
 | `AI_MODEL` | AI 对话接口 | 代码里有默认值 |
 | `OPENAI_API_KEY` | 语音识别和语音合成 | 基础 UI 测试不需要 |
+| `PHRASE_MODEL` | 印尼语本地化路由 | `off`（默认）/ `mock` / `sealion` |
+| `SEALION_BASE_URL`、`SEALION_API_KEY`、`SEALION_MODEL` | SEA-LION 润色（`PHRASE_MODEL=sealion`） | OpenAI 兼容；key 在 [playground.sea-lion.ai](https://playground.sea-lion.ai) 获取。自检：`npx tsx --env-file=.env scripts/check-sealion.ts` |
+| `CULTURAL_LAYERS` | 评测 A/B 开关 | `off` / `register` / `kb`（默认 `all`） |
 | `MCP_DINING_URL` | Dining MCP 调用 | 默认 `http://localhost:3001` |
 | `MCP_SPA_URL` | SPA MCP 调用 | 默认 `http://localhost:3002` |
 | `MCP_RESTAURANT_URL` | Restaurant MCP 调用 | 默认 `http://localhost:3003` |
@@ -236,13 +239,21 @@ npm run dev --workspace=apps/tablet -- --host 127.0.0.1
 | 方面 | 现状 |
 | --- | --- |
 | 文字回复 | 已通过 SSE 逐字流式 ✅ |
-| 语音 I/O | **未流式** —— STT 整段转写；TTS 要等整段合成完才播 |
-| 语言 | **仅 `en` / `zh`**；印尼语尚未接入（在 STT `LANG_MAP` 处被丢弃） |
-| 模型路由 | 无 —— 单一模型处理所有语言 |
-| 业务数据 | **Mock** —— 如 `check_spa_availability` 返回写死时段，`create_spa_booking` 返回 mock 确认码（`// TODO: query/INSERT Cakrasoft PMS`） |
-| SPA 预约路径 | `/spa` 触屏 UI 用**组件自带**的硬编码时段，与语音 → MCP 路径不同源 |
-| 档期校验 | `booking-agent` **不**用可用档期校验所选时段；预约确认回复硬编码英文 |
-| 意图输出 | 从 raw JSON 文本解析（`parseRaw`）；尚未用 tool/function calling |
+| 语音 I/O | **未流式（回合制）** —— STT 整段转写；TTS 要等整段合成完才播。目标 = 流式 STT + 边收边播 TTS + 打断（barge-in） |
+| 语言 | 对话支持 `en` / `zh` / `id`（STT 把 `indonesian`/`malay`→`id`）；UI 界面 i18n 仍为 `en` / `zh` |
+| 模型路由 | ✅ Claude 负责推理/工具调用；印尼语**润色**可经 `PHRASE_MODEL` 路由到 SEA-LION/Sahabat-AI（`llm-gateway.ts`） |
+| 本地化纵深 | ✅ 策展术语表 + 文化 KB（含 `id`）+ few-shot，术语锁由 phrase 校验闸核对（`curation/`） |
+| 安全约束 | ✅ 清真/禁忌/Nyepi/人数在代码校验，tablet 侧**与** MCP 侧双闸（`constraints/`） |
+| 业务数据 | spa 仍 **Mock**（有干净的 `SpaRepo` 切换缝）；dining 读真 MySQL；写操作仍是 `// TODO: INSERT Cakrasoft PMS` |
+| 意图输出 | ✅ 强制 tool/function calling（`tool_choice`），非裸 JSON 解析 |
+| 评测 | ✅ 可跑的三维评测 harness（`evals/runner`），产出真实 before/after 数字 |
+
+### 本地化、约束与评测（本阶段新增）
+
+- **模型路由** —— `apps/tablet/src/lib/ai/llm-gateway.ts` + `providers/`。两段式"Claude 推理、SEA-LION 润色"；`PHRASE_MODEL=off|mock|sealion`。SEA-LION 为 OpenAI 兼容 —— 用 `npx tsx --env-file=.env scripts/check-sealion.ts` 自检 key。
+- **策展语料** —— `apps/tablet/src/lib/ai/curation/`（术语表 + few-shot）+ `cultural/cultural-kb.ts`（已补 `id` 语料）。
+- **约束层** —— `apps/tablet/src/lib/ai/constraints/` + `apps/mcp-servers/packages/spa/src/constraints.ts`（服务端闸）。
+- **评测** —— `evals/runner/` + `evals/cultural/`（如何跑 baseline vs optimized 见该目录 README）。
 
 SPA 主线的技术设计与实施计划见 [AllStay-SPA-技术方案.html](./docs/AllStay-SPA-技术方案.html)。
 

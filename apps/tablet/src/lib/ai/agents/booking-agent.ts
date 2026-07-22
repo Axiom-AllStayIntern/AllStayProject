@@ -1,5 +1,6 @@
 import { callMcpTool } from '../tools/mcp-client.js';
 import type { McpServerName } from '../tools/mcp-client.js';
+import { validateBooking, violationText, type GuestProfile } from '../constraints/index.js';
 
 export type BookingService = 'spa' | 'restaurant' | 'transport';
 
@@ -13,6 +14,16 @@ export interface BookingIntent {
 	notes?: string;
 	therapistGenderPref?: 'male' | 'female' | 'no_preference';
 	language?: 'en' | 'zh' | 'id';
+	/** Guest health/faith profile for structured constraint validation. */
+	guest?: GuestProfile;
+}
+
+interface SpaServiceDetail {
+	nameEn?: string;
+	nameZh?: string;
+	nameId?: string;
+	contraindications?: string[];
+	maxPartySize?: number;
 }
 
 export interface AgentResult {
@@ -41,12 +52,15 @@ interface SpaSlot {
 	isAvailable: boolean;
 }
 
-async function getSpaServiceName(serviceId: string, lang: Lang): Promise<string> {
+async function getSpaService(serviceId: string): Promise<SpaServiceDetail | null> {
 	const r = await callMcpTool({ server: 'spa', tool: 'get_spa_service', params: { service_id: serviceId } });
-	const svc = (r.data as { service?: { nameEn?: string; nameZh?: string; nameId?: string } })?.service;
-	if (!svc) return serviceId;
+	return (r.data as { service?: SpaServiceDetail })?.service ?? null;
+}
+
+function serviceName(svc: SpaServiceDetail | null, fallback: string, lang: Lang): string {
+	if (!svc) return fallback;
 	const localized = lang === 'zh' ? svc.nameZh : lang === 'id' ? svc.nameId : svc.nameEn;
-	return localized ?? svc.nameEn ?? serviceId;
+	return localized ?? svc.nameEn ?? fallback;
 }
 
 export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentResult> {
@@ -58,8 +72,42 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 			reply: L(lang, '好的，请问您想预约哪一项 SPA 疗程？', 'Sure — which spa treatment would you like?', 'Baik, perawatan spa mana yang Anda inginkan?')
 		};
 	}
+
+	// Fetch full detail (contraindications, party limit) so the constraint layer
+	// can validate in code — not by hoping the model respected a prompt rule.
+	const svc = await getSpaService(intent.serviceId);
+	const name = serviceName(svc, intent.serviceId, lang);
+
+	// STRUCTURED SAFETY GATE — runs as soon as we know the treatment.
+	// Blocks (contraindications, party size, Nyepi once a date is known) stop the
+	// flow before any proposal/confirmation is created.
+	const check = validateBooking(
+		{
+			serviceId: intent.serviceId,
+			date: intent.date,
+			time: intent.time,
+			contraindications: svc?.contraindications ?? [],
+			maxPartySize: svc?.maxPartySize,
+			partySize: intent.partySize
+		},
+		intent.guest ?? {},
+		{}
+	);
+	const blocks = check.violations.filter((v) => v.severity === 'block');
+	if (blocks.length > 0) {
+		return {
+			success: false,
+			reply: blocks.map((v) => violationText(v, lang ?? 'en')).join(' '),
+			data: { blocked: true, violations: blocks.map((v) => v.code) }
+		};
+	}
+	// Soft warnings (Ramadan timing, festival day) are surfaced but don't block.
+	const warnNote = check.violations
+		.filter((v) => v.severity === 'warn')
+		.map((v) => violationText(v, lang ?? 'en'))
+		.join(' ');
+
 	if (!intent.date || !intent.time) {
-		const name = await getSpaServiceName(intent.serviceId, lang);
 		return {
 			success: false,
 			reply: L(
@@ -103,15 +151,18 @@ export async function proposeSpaBooking(intent: BookingIntent): Promise<AgentRes
 	}
 
 	// Available — ask the guest to confirm. NOTHING is booked yet.
-	const name = await getSpaServiceName(intent.serviceId, lang);
+	// Prepend any soft warning (e.g. Ramadan timing, festival crowds).
+	const prefix = warnNote ? `${warnNote} ` : '';
 	return {
 		success: true,
-		reply: L(
-			lang,
-			`我为您找到 ${intent.date} ${intent.time} 的 ${name}。需要我确认预约吗？`,
-			`I found ${name} on ${intent.date} at ${intent.time}. Shall I confirm the booking?`,
-			`Saya menemukan ${name} pada ${intent.date} pukul ${intent.time}. Konfirmasikan pemesanannya?`
-		),
+		reply:
+			prefix +
+			L(
+				lang,
+				`我为您找到 ${intent.date} ${intent.time} 的 ${name}。需要我确认预约吗？`,
+				`I found ${name} on ${intent.date} at ${intent.time}. Shall I confirm the booking?`,
+				`Saya menemukan ${name} pada ${intent.date} pukul ${intent.time}. Konfirmasikan pemesanannya?`
+			),
 		data: { proposal: { serviceId: intent.serviceId, date: intent.date, time: intent.time } }
 	};
 }
@@ -137,7 +188,11 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 			date: intent.date,
 			time: intent.time,
 			therapist_gender_preference: intent.therapistGenderPref ?? 'no_preference',
-			notes: intent.notes ?? ''
+			notes: intent.notes ?? '',
+			// Pass the guest profile so the server-side gate can re-validate.
+			pregnant: intent.guest?.pregnant,
+			guest_conditions: [...(intent.guest?.conditions ?? []), ...(intent.guest?.allergies ?? [])],
+			party_size: intent.partySize
 		}
 	});
 	if (!book.success) {
@@ -147,7 +202,37 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 		};
 	}
 
-	const res = book.data as { ok?: boolean; confirmationCode?: string; availableSlots?: string[] };
+	const res = book.data as {
+		ok?: boolean;
+		confirmationCode?: string;
+		availableSlots?: string[];
+		rejected?: boolean;
+		code?: string;
+		reason?: string;
+	};
+
+	// Server-side safety gate rejected the booking (e.g. Nyepi, contraindication).
+	if (res?.rejected) {
+		const isNyepi = res.code === 'nyepi';
+		return {
+			success: false,
+			reply: isNyepi
+				? L(
+						lang,
+						'那天是 Nyepi 静居日，全岛服务暂停，无法预约。我为您改到前后一天好吗？',
+						"That date is Nyepi (Day of Silence) — the island pauses, so it can't be booked. Shall I move it a day earlier or later?",
+						'Tanggal itu Nyepi — seluruh pulau berhenti, jadi tidak bisa dipesan. Boleh saya pindahkan sehari sebelum atau sesudahnya?'
+					)
+				: L(
+						lang,
+						'出于安全考虑，这项疗程不适合您的情况。我为您推荐更合适的选择好吗？',
+						"For your safety this treatment isn't suitable for your situation. May I suggest a better-fitting option?",
+						'Demi keamanan Anda, perawatan ini kurang cocok. Boleh saya sarankan pilihan yang lebih sesuai?'
+					),
+			data: res
+		};
+	}
+
 	if (res?.ok && res.confirmationCode) {
 		return {
 			success: true,

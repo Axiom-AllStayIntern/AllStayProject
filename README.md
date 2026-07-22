@@ -176,6 +176,9 @@ The template file is `.env.example`. For local tablet development, copy it to `a
 | `ANTHROPIC_API_KEY` | AI conversation endpoint | Optional for basic UI testing |
 | `AI_MODEL` | AI conversation endpoint | Has a fallback in code |
 | `OPENAI_API_KEY` | Speech-to-text and text-to-speech | Optional for basic UI testing |
+| `PHRASE_MODEL` | Indonesian localization router | `off` (default) / `mock` / `sealion` |
+| `SEALION_BASE_URL`, `SEALION_API_KEY`, `SEALION_MODEL` | SEA-LION phrasing (`PHRASE_MODEL=sealion`) | OpenAI-compatible; key from [playground.sea-lion.ai](https://playground.sea-lion.ai). Verify: `npx tsx --env-file=.env scripts/check-sealion.ts` |
+| `CULTURAL_LAYERS` | Eval A/B toggle | `off` / `register` / `kb` (default `all`) |
 | `MCP_DINING_URL` | Dining MCP calls | Defaults to `http://localhost:3001` |
 | `MCP_SPA_URL` | SPA MCP calls | Defaults to `http://localhost:3002` |
 | `MCP_RESTAURANT_URL` | Restaurant MCP calls | Defaults to `http://localhost:3003` |
@@ -236,13 +239,21 @@ The tablet ships a resident voice assistant (`VoiceAssistant.svelte`, mounted on
 | Area | State |
 | --- | --- |
 | Text reply | Streamed token-by-token over SSE ✅ |
-| Voice I/O | **Not streamed** — STT is batch; TTS plays only after the full clip synthesizes |
-| Languages | **`en` / `zh` only**; Indonesian is not wired yet (discarded at STT `LANG_MAP`) |
-| Model routing | None — a single model handles all languages |
-| Business data | **Mock** — e.g. `check_spa_availability` returns hardcoded slots, `create_spa_booking` a mock code (`// TODO: query/INSERT Cakrasoft PMS`) |
-| SPA booking paths | The `/spa` touch UI uses its **own** hardcoded time slots, separate from the voice → MCP path |
-| Slot validation | `booking-agent` does **not** validate the chosen slot against availability; its confirmation reply is hardcoded English |
-| Intent output | Parsed from raw JSON text (`parseRaw`); not yet tool/function-calling |
+| Voice I/O | **Not streamed** (turn-based) — STT is batch; TTS plays only after the full clip synthesizes. Target = streaming STT + incremental TTS + barge-in |
+| Languages | `en` / `zh` / `id` in conversation (STT maps `indonesian`/`malay`→`id`); UI chrome i18n is still `en` / `zh` |
+| Model routing | ✅ Claude reasons/tool-calls; Indonesian *phrasing* can route to SEA-LION/Sahabat-AI via `PHRASE_MODEL` (`llm-gateway.ts`) |
+| Localization depth | ✅ Curated glossary + cultural KB (incl. `id`) + few-shot, with terminology locks verified by a phrase gate (`curation/`) |
+| Safety constraints | ✅ halal/contraindication/Nyepi/party-size validated in code, tablet-side **and** MCP-side (`constraints/`) |
+| Business data | **Mock** for spa (clean `SpaRepo` swap seam); dining reads real MySQL; writes are still `// TODO: INSERT Cakrasoft PMS` |
+| Intent output | ✅ Forced tool/function-calling (`tool_choice`), not raw-JSON parsing |
+| Evaluation | ✅ Runnable 3-dimension harness (`evals/runner`) producing real before/after numbers |
+
+### Localization, constraints & evaluation (added this stage)
+
+- **Model routing** — `apps/tablet/src/lib/ai/llm-gateway.ts` + `providers/`. Two-stage "reason in Claude, phrase in SEA-LION"; `PHRASE_MODEL=off|mock|sealion`. SEA-LION is OpenAI-compatible — verify your key with `npx tsx --env-file=.env scripts/check-sealion.ts`.
+- **Curated corpus** — `apps/tablet/src/lib/ai/curation/` (glossary + few-shot) + `cultural/cultural-kb.ts` (now with `id` text).
+- **Constraint layer** — `apps/tablet/src/lib/ai/constraints/` + `apps/mcp-servers/packages/spa/src/constraints.ts` (server-side gate).
+- **Evaluation** — `evals/runner/` + `evals/cultural/` (see that folder's README for how to run baseline vs optimized).
 
 See [AllStay-SPA-技术方案.html](./docs/AllStay-SPA-技术方案.html) for the SPA-line technical design and implementation plan.
 

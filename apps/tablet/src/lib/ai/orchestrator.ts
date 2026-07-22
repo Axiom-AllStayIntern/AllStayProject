@@ -1,10 +1,26 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { env } from '$env/dynamic/private';
+import { getAnthropic, anthropicModel } from './providers/anthropic-provider.js';
+import { phraseReply } from './llm-gateway.js';
 import { handleOrderIntent } from './agents/order-agent.js';
 import { handleBookingIntent, proposeSpaBooking, confirmSpaBooking } from './agents/booking-agent.js';
 import { handleInfoIntent } from './agents/info-agent.js';
 import { runSpaConcierge, resolveSpaServiceId } from './agents/spa-agent.js';
 import { spaSession } from './spa-session.js';
+import type { GuestProfile } from './constraints/index.js';
+
+/** Assemble a GuestProfile from loosely-typed extracted entities. */
+function guestFromEntities(e: Record<string, unknown>): GuestProfile {
+	const arr = (v: unknown): string[] | undefined =>
+		Array.isArray(v) ? v.map(String).filter((s) => s && s !== 'null') : undefined;
+	const bool = (v: unknown): boolean | undefined =>
+		v === true || v === 'true' ? true : v === false ? false : undefined;
+	return {
+		pregnant: bool(e.pregnant),
+		conditions: arr(e.healthConditions),
+		allergies: arr(e.allergies),
+		fasting: bool(e.fasting)
+	};
+}
 
 export interface ConversationInput {
 	message: string;
@@ -29,7 +45,7 @@ You help guests with:
 
 Analyze the guest's message and answer by calling the "respond" tool. Provide:
 - intent: one of order, cancel_order, checkout, spa_info, booking_spa, confirm_booking, booking_restaurant, booking_transport, info, switch_language, close_conversation, other
-- entities: extracted fields (dish, quantity, specialInstructions, serviceId, date, time, partySize, notes, query, foodTag ["noodles"|"rice"|"sandwich"|"sweet"|"fruit"|"drinks"]). Use null when a field is not present.
+- entities: extracted fields (dish, quantity, specialInstructions, serviceId, date, time, partySize, notes, query, foodTag ["noodles"|"rice"|"sandwich"|"sweet"|"fruit"|"drinks"], and guest health/faith fields: pregnant [true/false], healthConditions [array of strings, e.g. "high blood pressure", "diabetes"], allergies [array of strings], fasting [true/false for Ramadan fasting]). Use null when a field is not present.
 - reply: your warm, concise conversational response in the same language as the guest
 
 Always call the respond tool — do not answer in plain text.
@@ -47,6 +63,10 @@ Rules:
 - Use "spa_info" when the guest asks about spa treatments in an exploratory way: recommendations, what treatments/massages are available, prices, durations, or descriptions ("推荐个 SPA", "有什么按摩", "spa recommendation", "what massages do you have", "介绍下你们的 spa"). Set entities.query to the guest's request. Keep your "reply" a brief one-line acknowledgement (e.g. "Let me find the best option for you") — the detailed, data-grounded recommendation is produced separately, so do NOT invent treatment names or prices here.
 - Use "booking_spa" only when the guest clearly wants to reserve a specific spa treatment (mentions booking/reserving, or names a treatment together with a date/time). Put the treatment name (free text is fine) in entities.serviceId, and the date/time in entities.date / entities.time. If the guest refers back to a previous recommendation ("book that one", "就订这个", "the one you mentioned"), still use booking_spa and leave entities.serviceId null — the system remembers the last recommendation.
 - Use "confirm_booking" when the guest affirms a pending spa booking the assistant just proposed: "yes", "confirm", "go ahead", "好的", "确认", "可以", "就这样", "对". Only use this as a short affirmation right after a "Shall I confirm?" style question.
+
+Guest health/faith extraction (important for safe spa booking):
+- Whenever the guest mentions a health condition, pregnancy, an allergy, or Ramadan fasting — in ANY intent — capture it: pregnant=true for "怀孕/孕/pregnant/hamil"; healthConditions for "高血压/high blood pressure", "糖尿病/diabetes", "受伤/手术/injury/surgery"; allergies for stated allergies; fasting=true for "斋戒/在斋月/fasting/puasa".
+- Do NOT decide suitability yourself — just extract the facts. The system validates contraindications in code.
 
 cancel_order intent guide:
 Use "cancel_order" when the guest wants to remove, cancel, or undo an item from their cart.
@@ -103,6 +123,10 @@ async function dispatchParsed(
 	parsed: { intent: string; entities: Record<string, unknown>; reply: string },
 	input: ConversationInput
 ): Promise<ConversationOutput> {
+	// Accumulate any guest health/faith facts mentioned THIS turn (in any intent)
+	// so they still guard a booking made in a later turn.
+	spaSession.mergeGuest(input.roomId, guestFromEntities(parsed.entities));
+
 	switch (parsed.intent) {
 		case 'cancel_order': {
 			const dish = (parsed.entities.dish as string | null) ?? null;
@@ -172,13 +196,23 @@ async function dispatchParsed(
 				time: merged.time,
 				roomId,
 				notes: parsed.entities.notes as string,
+				partySize: (parsed.entities.partySize as number) ?? undefined,
+				guest: spaSession.getGuest(roomId),
 				language: input.language
 			});
 
 			// If a concrete proposal was produced, mark it awaiting confirmation (the gate).
+			// Persist the guest profile so the confirm step's server-side gate gets it.
 			const proposal = (result.data as { proposal?: { serviceId: string; date: string; time: string } } | undefined)
 				?.proposal;
-			if (proposal) spaSession.mergePending(roomId, { ...proposal, awaitingConfirmation: true });
+			if (proposal) {
+				spaSession.mergePending(roomId, {
+					...proposal,
+					awaitingConfirmation: true,
+					guest: spaSession.getGuest(roomId),
+					partySize: (parsed.entities.partySize as number) ?? undefined
+				});
+			}
 
 			return { reply: result.reply, intent: 'booking_spa', data: result.data };
 		}
@@ -195,6 +229,8 @@ async function dispatchParsed(
 				date: p.date,
 				time: p.time,
 				roomId,
+				guest: spaSession.getGuest(roomId),
+				partySize: p.partySize,
 				language: input.language
 			});
 			if (result.success) spaSession.clearPending(roomId);
@@ -350,9 +386,8 @@ function extractReplyProgress(
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 export async function processConversation(input: ConversationInput): Promise<ConversationOutput> {
-	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-	const response = await client.messages.create({
-		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
+	const response = await getAnthropic().messages.create({
+		model: anthropicModel(),
 		max_tokens: 1024,
 		system: buildSystem(input),
 		messages: buildMessages(input),
@@ -362,7 +397,20 @@ export async function processConversation(input: ConversationInput): Promise<Con
 
 	const parsed = extractRespond(response.content);
 	if (!parsed) return { reply: fallbackReply(input.language) };
-	return dispatchParsed(parsed, input);
+	return localize(await dispatchParsed(parsed, input), input);
+}
+
+/** Two-stage localization: re-voice the final reply in native Bahasa via the
+ *  model router (no-op unless PHRASE_MODEL is active and the guest speaks id). */
+async function localize(output: ConversationOutput, input: ConversationInput): Promise<ConversationOutput> {
+	if (input.language !== 'id') return output;
+	const { reply } = await phraseReply({
+		draftReply: output.reply,
+		query: input.message,
+		lang: 'id',
+		intent: output.intent
+	});
+	return { ...output, reply };
 }
 
 /** Streaming variant — calls onReplyChunk with incremental reply text as Claude generates it.
@@ -371,12 +419,11 @@ export async function streamConversation(
 	input: ConversationInput,
 	onReplyChunk: (chunk: string) => void
 ): Promise<ConversationOutput> {
-	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 	let toolJson = '';
 	let lastReplyLen = 0;
 
-	const stream = client.messages.stream({
-		model: env.AI_MODEL ?? 'claude-sonnet-4-6',
+	const stream = getAnthropic().messages.stream({
+		model: anthropicModel(),
 		max_tokens: 1024,
 		system: buildSystem(input),
 		messages: buildMessages(input),
@@ -409,5 +456,7 @@ export async function streamConversation(
 		}
 	}
 	if (!parsed) return { reply: fallbackReply(input.language) };
-	return dispatchParsed(parsed, input);
+	// Streamed chunks were Claude's draft; the final reply may be re-voiced in
+	// native Bahasa here (the "phrase in SEA-LION" second pass) before {t:'done'}.
+	return localize(await dispatchParsed(parsed, input), input);
 }

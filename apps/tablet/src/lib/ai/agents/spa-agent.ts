@@ -1,8 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { env } from '$env/dynamic/private';
+import { getAnthropic, anthropicModel } from '../providers/anthropic-provider.js';
 import { callMcpTool } from '../tools/mcp-client.js';
-import { culturalRegister } from '../cultural/cultural-register.js';
-import { retrieveCulturalFacts, renderCulturalFacts } from '../cultural/cultural-kb.js';
+import { buildCurationContext } from '../curation/index.js';
 
 /**
  * SPA concierge agent.
@@ -92,7 +91,7 @@ export interface SpaConciergeResult {
 }
 
 export async function runSpaConcierge(input: SpaConciergeInput): Promise<SpaConciergeResult> {
-	const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+	const client = getAnthropic();
 
 	const messages: Anthropic.MessageParam[] = [
 		...(input.history ?? []).map((m) => ({ role: m.role, content: m.content })),
@@ -103,19 +102,16 @@ export async function runSpaConcierge(input: SpaConciergeInput): Promise<SpaConc
 	const recommendedServiceIds: string[] = [];
 	const MAX_HOPS = 4;
 
-	// Layer 1 (register control) + Layer 2 (retrieved Saka/Bali cultural facts).
-	const system = [
-		SPA_SYSTEM,
-		langNote(input.language),
-		culturalRegister(input.language),
-		renderCulturalFacts(retrieveCulturalFacts(input.message))
-	]
+	// Curated localization context: register (L1) + retrieved Saka/Bali facts (L2)
+	// + canonical glossary + few-shot phrasings, assembled in one call.
+	const curation = buildCurationContext({ query: input.message, lang: input.language, intent: 'spa_info' });
+	const system = [SPA_SYSTEM, langNote(input.language), curation.systemFragment]
 		.filter(Boolean)
 		.join('\n\n');
 
 	for (let hop = 0; hop < MAX_HOPS; hop++) {
 		const res = await client.messages.create({
-			model: env.AI_MODEL ?? 'claude-sonnet-4-6',
+			model: anthropicModel(),
 			max_tokens: 1024,
 			system,
 			tools: SPA_TOOLS,

@@ -8,19 +8,36 @@ Purpose: measure — honestly and reproducibly — how culturally appropriate th
 2. **Saka cultural knowledge base** — `apps/tablet/src/lib/ai/cultural/cultural-kb.ts` (retrieved facts injected into the prompt).
 3. **Regional model selection** — swap the generation model (e.g. Claude vs SEA-LION / Sahabat-AI) behind the model gateway and re-measure.
 
-## Metric
+## Metric — three dimensions
 
-`cultural_response_accuracy = satisfied_criteria / total_criteria`, averaged over all cases in `testset.json`. Each case lists concrete pass/fail criteria.
+`testset.json` (v0.2) scores each case across up to three dimensions:
 
-Scoring: use an **LLM-as-judge** (a strong model grades each criterion pass/fail given the prompt + reply), then **human spot-check** ~20% of judgements to validate the judge. Report inter-rater agreement.
+- **task_completion** — deterministic: did the system reach the right intent / (not) book? (e.g. a pregnant guest's hot-stone booking must be refused). No judge.
+- **content_accuracy** — deterministic substring checks (`mustMention` / `mustNotContain`, e.g. reply mentions "halal", never assumes "pork").
+- **cultural** — `satisfied_criteria / total_criteria` graded by an **LLM-as-judge**, then **human spot-check** ~20% of judgements. Report inter-rater agreement.
 
-## How to run (to produce the real before/after numbers)
+Per-case `overall` = mean of the applicable dimensions; a run's score = mean across cases per dimension.
 
-1. **Baseline** — generate a reply for every case with the cultural layers OFF (plain system prompt, base model). Score. This is your `X%`.
-2. **Optimized** — turn on Layer 1 + Layer 2 (and, for Layer 3, the chosen regional model). Score. This is your `Y%`.
-3. Keep the test set, model versions, judge model, and date fixed per run; report N (number of cases) alongside the percentages.
+## How to run (produces the real before/after numbers)
 
-> Do **not** fill in the percentages by hand. They must come from an actual run. A claim like "72% → 91% (n=10, judge=Claude, human-checked)" is defensible; a bare "XX% → YY%" is not.
+A runnable harness lives in [`evals/runner`](../runner) (`run-eval.ts` + `harness.ts` + `judge.ts` + `report.ts`). It drives the **live** pipeline over HTTP (`/api/conversation`), so it exercises the real orchestrator → gateway → curation → constraints → MCP path.
+
+Prereqs: the tablet server + spa MCP server running, `ANTHROPIC_API_KEY` set.
+
+```sh
+# Baseline (L0): start the tablet with CULTURAL_LAYERS=off PHRASE_MODEL=off, then:
+npx tsx --env-file=.env evals/runner/run-eval.ts --config baseline
+# + Register (L1): restart with CULTURAL_LAYERS=register, then:
+npx tsx --env-file=.env evals/runner/run-eval.ts --config register
+# + Register + KB (L2): restart with CULTURAL_LAYERS=kb, then:
+npx tsx --env-file=.env evals/runner/run-eval.ts --config kb
+# + Regional model (L3): CULTURAL_LAYERS=kb PHRASE_MODEL=sealion, then --config sealion
+#   (SEA-LION hosted API is ~10 req/min — add EVAL_DELAY_MS=7000 to space out cases)
+```
+
+Each run writes `evals/results/<config>-<date>.json` and regenerates `evals/results/summary.md` (the real before/after table).
+
+> Do **not** fill in the percentages by hand. They must come from an actual run. A claim like "72% → 91% (n=15, judge=claude-sonnet-4-6, human-checked)" is defensible; a bare "XX% → YY%" is not.
 
 ## Results (fill in from real runs)
 
@@ -33,6 +50,6 @@ Scoring: use an **LLM-as-judge** (a strong model grades each criterion pass/fail
 
 ## Notes / caveats
 
-- `testset.json` is a small starter set (n=10). Grow it to ≥50 for a stable number; add cases from real guest logs once available.
+- `testset.json` is v0.3 (n=33, balanced en/zh/id). Grow it to ≥50 for a more stable number; add cases from real guest logs once available.
 - Balance languages (en/zh/id) and topics (faith, calendar, etiquette, honorifics) so the score isn't dominated by one theme.
-- Indonesian (`id`) cases should be added once the STT/pipeline supports Bahasa Indonesia end-to-end.
+- Indonesian (`id`) cases are included (the pipeline now supports Bahasa end-to-end; STT maps `indonesian`/`malay`→`id`).
