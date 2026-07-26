@@ -1,6 +1,8 @@
 import { callMcpTool } from '../tools/mcp-client.js';
 import type { McpServerName } from '../tools/mcp-client.js';
 import { validateBooking, violationText, type GuestProfile } from '../constraints/index.js';
+import { buildWorkOrder } from '../staff/work-order.js';
+import { notifyStaff } from '../staff/notify.js';
 
 export type BookingService = 'spa' | 'restaurant' | 'transport';
 
@@ -234,6 +236,24 @@ export async function confirmSpaBooking(intent: BookingIntent): Promise<AgentRes
 	}
 
 	if (res?.ok && res.confirmationCode) {
+		// Staff bridge (human-in-the-loop): hand the local SPA desk a pre-filled
+		// Bahasa work order. Fire-and-forget — never block the guest's reply.
+		const svc = await getSpaService(intent.serviceId);
+		const order = buildWorkOrder({
+			confirmationCode: res.confirmationCode,
+			roomId: intent.roomId,
+			serviceId: intent.serviceId,
+			service: svc,
+			date: intent.date,
+			time: intent.time,
+			partySize: intent.partySize,
+			therapistGenderPref: intent.therapistGenderPref,
+			notes: intent.notes,
+			guest: intent.guest,
+			createdAt: Date.now()
+		});
+		void notifyStaff(order);
+
 		return {
 			success: true,
 			reply: L(

@@ -21,6 +21,9 @@ export interface PendingSpaBooking {
 	/** Guest health/faith profile, carried to the confirm step's server-side gate. */
 	guest?: GuestProfile;
 	partySize?: number;
+	/** Carried to the confirm step so the staff work order is complete. */
+	notes?: string;
+	therapistGenderPref?: 'male' | 'female' | 'no_preference';
 }
 
 const lastRecommended = new Map<string, string>();

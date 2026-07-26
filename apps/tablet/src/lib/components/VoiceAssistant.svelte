@@ -3,7 +3,8 @@
 	import { WakeDetector } from '$lib/utils/wake-detector.js';
 	import { attachSilenceVAD } from '$lib/utils/silence-vad.js';
 	import { processVoiceInput, type AIResponse } from '$lib/services/ai-conversation.js';
-	import { speakText, stopSpeaking } from '$lib/utils/tts.js';
+	import { speakText, stopSpeaking, enqueueSpeech, waitForSpeechDrain } from '$lib/utils/tts.js';
+	import { extractSentences } from '$lib/utils/sentence-chunker.js';
 	import { language } from '$lib/stores/language.js';
 	import { conversationHistory } from '$lib/stores/conversation.js';
 
@@ -23,6 +24,14 @@
 	// ── Voice gate constants ───────────────────────────────────────────────────
 	const VOICE_GATE_RMS    = 0.04;  // RMS threshold to start recording after TTS
 	const POST_TTS_DELAY_MS = 300;   // ms to let TTS echo die down before monitoring
+
+	// ── Barge-in constants ─────────────────────────────────────────────────────
+	// Higher than the voice gate so residual TTS echo (suppressed by the browser's
+	// echoCancellation) is less likely to false-trigger; require a few sustained
+	// frames so a transient click doesn't cut off playback.
+	const BARGE_RMS    = 0.07;
+	const BARGE_FRAMES = 6;
+	let bargeStop: (() => void) | null = null;
 
 	// ── Recording resources ────────────────────────────────────────────────────
 	let recStream: MediaStream | null = null;
@@ -133,6 +142,70 @@
 		});
 	}
 
+	// ── Barge-in: listen for the guest interrupting while TTS plays ────────────
+	// Opens a mic stream with echo cancellation during `speaking`; if the guest
+	// speaks (sustained RMS above BARGE_RMS), stop playback and start listening —
+	// same effect as the manual tap-to-interrupt, triggered by voice.
+	async function startBargeMonitor() {
+		stopBargeMonitor();
+		let stream: MediaStream;
+		try {
+			stream = await navigator.mediaDevices.getUserMedia({
+				audio: { echoCancellation: true, noiseSuppression: true }
+			});
+		} catch {
+			return; // mic unavailable — barge-in simply won't be active
+		}
+		if (state !== 'speaking') { stream.getTracks().forEach((t) => t.stop()); return; }
+
+		const ctx      = new AudioContext();
+		const src      = ctx.createMediaStreamSource(stream);
+		const analyser = ctx.createAnalyser();
+		analyser.fftSize = 512;
+		src.connect(analyser);
+		const buf = new Float32Array(analyser.fftSize);
+		let rafId = 0;
+		let sustained = 0;
+		let done = false;
+
+		const cleanup = () => {
+			if (done) return;
+			done = true;
+			cancelAnimationFrame(rafId);
+			src.disconnect();
+			ctx.close().catch(() => {});
+			stream.getTracks().forEach((t) => t.stop());
+			if (bargeStop === cleanup) bargeStop = null;
+		};
+		bargeStop = cleanup;
+
+		function tick() {
+			if (done || state !== 'speaking') { cleanup(); return; }
+			analyser.getFloatTimeDomainData(buf);
+			let s = 0;
+			for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+			const rms = Math.sqrt(s / buf.length);
+			if (rms > BARGE_RMS) {
+				if (++sustained >= BARGE_FRAMES) { cleanup(); onBargeIn(); return; }
+			} else {
+				sustained = 0;
+			}
+			rafId = requestAnimationFrame(tick);
+		}
+		tick();
+	}
+
+	function stopBargeMonitor() {
+		bargeStop?.();
+		bargeStop = null;
+	}
+
+	function onBargeIn() {
+		if (state !== 'speaking') return;
+		stopSpeaking();
+		startListening(true);
+	}
+
 	// ── Silence detected → PROCESSING ─────────────────────────────────────────
 	async function handleSilence() {
 		if (state !== 'listening') return;
@@ -153,20 +226,42 @@
 
 		try {
 			streamingReply = '';
+			// Sentence-level streaming TTS: as the reply streams in, hand each
+			// COMPLETE sentence to the speech queue so audio starts after the first
+			// sentence instead of waiting for the whole reply to synthesize.
+			let spokenUpTo = 0;
+			let lastPartial = '';
+			let startedSpeaking = false;
+
 			const response = await processVoiceInput(blob, $language, (partial) => {
 				streamingReply = partial;
+				lastPartial = partial;
+				const { sentences, consumed } = extractSentences(partial, spokenUpTo);
+				if (sentences.length > 0) {
+					spokenUpTo = consumed;
+					if (!startedSpeaking) {
+						startedSpeaking = true;
+						if (state === 'processing') { state = 'speaking'; startBargeMonitor(); }
+					}
+					for (const s of sentences) enqueueSpeech(s);
+				}
 			});
+
+			// History now holds the final assistant turn — drop the streaming bubble
+			// so it isn't shown twice.
 			streamingReply = '';
 
-			if (state === 'idle') return;
+			if (state === 'idle') { stopSpeaking(); return; }
 
 			if (!response.text?.trim()) {
+				stopSpeaking();
 				startListening();
 				return;
 			}
 
-			// Close-session intent: speak goodbye then end
+			// Close-session intent: cancel any streamed audio, speak goodbye, end.
 			if (response.action?.type === 'close_session') {
+				stopSpeaking();
 				state = 'speaking';
 				onResult(response);
 				await speakText(response.text);
@@ -174,9 +269,17 @@
 				return;
 			}
 
-			state = 'speaking';
+			// Flush the trailing partial sentence (text after the last boundary).
+			const remainder = lastPartial.slice(spokenUpTo).trim();
+			if (remainder) enqueueSpeech(remainder);
+			// Nothing streamed (reply arrived only in the done event) → speak it all.
+			if (!startedSpeaking && !remainder) enqueueSpeech(response.text);
+
+			if (state === 'processing') { state = 'speaking'; startBargeMonitor(); }
 			onResult(response);
-			await speakText(response.text);
+
+			await waitForSpeechDrain();
+			stopBargeMonitor();
 
 			if (state === 'idle') return;
 
@@ -185,6 +288,8 @@
 			}
 		} catch {
 			streamingReply = '';
+			stopSpeaking();
+			stopBargeMonitor();
 			if (state !== 'idle') startListening();
 		}
 	}
@@ -217,6 +322,7 @@
 	function goIdle() {
 		stopSessionTimers();
 		stopSpeaking();
+		stopBargeMonitor();
 		vadStop?.(); vadStop = null;
 		releaseStream();
 		state = 'idle';
@@ -226,6 +332,7 @@
 	function teardown() {
 		wakeDetector?.stop();
 		stopSpeaking();
+		stopBargeMonitor();
 		stopSessionTimers();
 		vadStop?.();
 		releaseStream();
@@ -240,6 +347,7 @@
 		} else if (state === 'listening') {
 			handleSilence();
 		} else if (state === 'speaking') {
+			stopBargeMonitor();
 			stopSpeaking();
 			startListening(true);
 		}

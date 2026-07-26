@@ -1,58 +1,58 @@
 import type { PageServerLoad } from './$types';
+import { callMcpTool } from '$lib/ai/tools/mcp-client.js';
+
+// Single source of truth: the touch page now pulls the SAME spa catalogue the
+// voice/AI pipeline uses (spa MCP `list_spa_services`), instead of its own
+// hardcoded list. fixtures carry no glyph/imageUrl, so we derive a deterministic
+// glyph from the service category to keep the existing card visuals.
+const GLYPH_BY_CATEGORY: Record<string, string> = {
+	massage: 'leaf',
+	facial: 'flower',
+	body: 'stone',
+	package: 'hearts'
+};
+
+interface McpSpaService {
+	id: string;
+	nameEn: string;
+	nameZh: string;
+	nameId: string;
+	category: string;
+	durationMin: number;
+	priceIdr: number;
+	descEn: string;
+	descZh: string;
+	contraindications: string[];
+	maxPartySize: number;
+}
 
 export const load: PageServerLoad = async () => {
-	return {
-		services: [
-			{
-				id: 'sp-bali',
-				glyph: 'leaf',
-				imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=320&auto=format&fit=crop',
-				name: { en: 'Balinese Massage', zh: '巴厘式按摩' },
-				description: { en: 'Traditional full-body massage using long strokes and aromatic oils.', zh: '经典全身按摩，长按推拿配合芳香精油。' },
-				duration: 60,
-				price: 550000,
-				isAvailable: true
-			},
-			{
-				id: 'sp-hot',
-				glyph: 'stone',
-				imageUrl: 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=320&auto=format&fit=crop',
-				name: { en: 'Hot Stone Therapy', zh: '热石疗法' },
-				description: { en: 'Heated volcanic stones to ease deep muscle tension.', zh: '火山热石舒缓深层肌肉紧绷。' },
-				duration: 75,
-				price: 780000,
-				isAvailable: true
-			},
-			{
-				id: 'sp-flora',
-				glyph: 'flower',
-				imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=320&auto=format&fit=crop',
-				name: { en: 'Floral Bath Ritual', zh: '花浴仪式' },
-				description: { en: 'Frangipani and rose petal bath with herbal infusion.', zh: '鸡蛋花与玫瑰花瓣浴，搭配草本浸泡。' },
-				duration: 45,
-				price: 420000,
-				isAvailable: true
-			},
-			{
-				id: 'sp-foot',
-				glyph: 'foot',
-				imageUrl: 'https://images.unsplash.com/photo-1600334129128-685c5582fd35?w=320&auto=format&fit=crop',
-				name: { en: 'Reflexology', zh: '足底反射疗法' },
-				description: { en: 'Acupressure on the soles to restore body balance.', zh: '足底穴位按压，调和身体平衡。' },
-				duration: 45,
-				price: 380000,
-				isAvailable: true
-			},
-			{
-				id: 'sp-couple',
-				glyph: 'hearts',
-				imageUrl: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?w=320&auto=format&fit=crop',
-				name: { en: 'Couples Retreat', zh: '双人疗愈' },
-				description: { en: 'Side-by-side massage and floral bath in a private suite.', zh: '双人并肩按摩并享私密花浴套房。' },
-				duration: 120,
-				price: 1850000,
-				isAvailable: true
-			}
-		]
-	};
+	const result = await callMcpTool({
+		server: 'spa',
+		tool: 'list_spa_services',
+		params: {}
+	});
+
+	if (!result.success) {
+		// Degrade gracefully instead of showing stale hardcoded data — keeps the
+		// single-source guarantee. The page renders a friendly empty state.
+		console.warn('[spa page] list_spa_services failed:', result.error);
+		return { services: [], sourceError: true };
+	}
+
+	const raw = (result.data as { services?: McpSpaService[] })?.services ?? [];
+	const services = raw.map((s) => ({
+		id: s.id,
+		glyph: GLYPH_BY_CATEGORY[s.category] ?? 'leaf',
+		name: { en: s.nameEn, zh: s.nameZh, id: s.nameId },
+		// fixtures have no Indonesian description yet — fall back to English for id.
+		description: { en: s.descEn, zh: s.descZh, id: s.descEn },
+		duration: s.durationMin,
+		price: s.priceIdr,
+		isAvailable: true,
+		maxPartySize: s.maxPartySize,
+		contraindications: s.contraindications
+	}));
+
+	return { services, sourceError: false };
 };

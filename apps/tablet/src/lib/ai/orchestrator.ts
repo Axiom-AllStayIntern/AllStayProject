@@ -210,7 +210,10 @@ async function dispatchParsed(
 					...proposal,
 					awaitingConfirmation: true,
 					guest: spaSession.getGuest(roomId),
-					partySize: (parsed.entities.partySize as number) ?? undefined
+					partySize: (parsed.entities.partySize as number) ?? undefined,
+					notes: (parsed.entities.notes as string) ?? undefined,
+					therapistGenderPref:
+						(parsed.entities.therapistGenderPref as 'male' | 'female' | 'no_preference') ?? undefined
 				});
 			}
 
@@ -231,6 +234,8 @@ async function dispatchParsed(
 				roomId,
 				guest: spaSession.getGuest(roomId),
 				partySize: p.partySize,
+				notes: p.notes,
+				therapistGenderPref: p.therapistGenderPref,
 				language: input.language
 			});
 			if (result.success) spaSession.clearPending(roomId);

@@ -23,10 +23,13 @@ import { env } from '$env/dynamic/private';
 import type { LlmProvider, GenerateResult } from './provider.js';
 
 export const SEALION_DEFAULT_BASE_URL = 'https://api.sea-lion.ai/v1';
-// An instruct model the hosted API serves (verify with scripts/check-sealion.ts).
+// A plain instruct model the hosted API serves (verify with scripts/check-sealion.ts).
+// NOTE: prefer a non-reasoning *-IT model here. The Qwen-SEA-LION v4.5 / *-R
+// models are reasoning models — the hosted API ignores thinking_mode:off and
+// returns empty content (finish_reason=length) for short phrasing prompts.
 // For Indonesian slang/register, Sahabat-AI (GoTo, SEA-LION-based) is a strong
 // self-hosted alternative — just set SEALION_BASE_URL/SEALION_MODEL to it.
-export const SEALION_DEFAULT_MODEL = 'aisingapore/Qwen-SEA-LION-v4.5-27B-IT';
+export const SEALION_DEFAULT_MODEL = 'aisingapore/Gemma-SEA-LION-v4-27B-IT';
 
 let _client: OpenAI | null = null;
 

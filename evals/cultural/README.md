@@ -10,7 +10,7 @@ Purpose: measure — honestly and reproducibly — how culturally appropriate th
 
 ## Metric — three dimensions
 
-`testset.json` (v0.2) scores each case across up to three dimensions:
+`testset.json` (v0.3, n=33 — 14 en / 9 zh / 10 id) scores each case across up to three dimensions:
 
 - **task_completion** — deterministic: did the system reach the right intent / (not) book? (e.g. a pregnant guest's hot-stone booking must be refused). No judge.
 - **content_accuracy** — deterministic substring checks (`mustMention` / `mustNotContain`, e.g. reply mentions "halal", never assumes "pork").
@@ -39,14 +39,24 @@ Each run writes `evals/results/<config>-<date>.json` and regenerates `evals/resu
 
 > Do **not** fill in the percentages by hand. They must come from an actual run. A claim like "72% → 91% (n=15, judge=claude-sonnet-4-6, human-checked)" is defensible; a bare "XX% → YY%" is not.
 
-## Results (fill in from real runs)
+## Results (from real runs)
 
-| Configuration | Model | Accuracy | N | Date |
-| --- | --- | --- | --- | --- |
-| Baseline (no cultural layers) | — | — | 10 | — |
-| + Register (L1) | — | — | 10 | — |
-| + Register + Saka KB (L2) | — | — | 10 | — |
-| + Regional model (L3) | — | — | 10 | — |
+Source of truth is the auto-generated [`../results/summary.md`](../results/summary.md); the
+per-case detail is in `../results/<config>-<date>.json`. Latest run (2026-07-26,
+judge=claude-sonnet-4-6, n=33):
+
+| Configuration | Task completion | Content accuracy | Cultural | Overall | N |
+| --- | --- | --- | --- | --- | --- |
+| Baseline (layers off, phrasing off) | 80.0% | 60.0% | 37.1% | 42.4% | 33 |
+| + all cultural layers + SEA-LION phrasing (Gemma-SEA-LION-v4-27B-IT) | 80.0% | 60.0% | 40.3% | 43.9% | 33 |
+
+Reading it honestly: task-completion and content-accuracy are deterministic and unchanged
+(the cultural layers/phrasing don't alter intent routing or the substring facts). The gain is
+in **cultural appropriateness (+3.2pp, 37.1%→40.3%)** and overall (+1.5pp). The effect is
+bounded because SEA-LION phrasing only fires on the 10 `id` cases (and the verify gate falls
+back to Claude when a rephrase drops a number/locked term), while the 23 en/zh cases benefit
+only from the register+KB layers. The intermediate `register` / `kb` rungs were not run this
+pass — re-run with `CULTURAL_LAYERS=register` then `=kb` to attribute each layer's share.
 
 ## Notes / caveats
 

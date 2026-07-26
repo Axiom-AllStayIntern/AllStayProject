@@ -2,6 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { language } from '$lib/stores/language.js';
+	import { roomNumber } from '$lib/stores/room.js';
 	import { formatPrice } from '$lib/utils/format.js';
 	import type { PageData } from './$types';
 
@@ -10,12 +11,41 @@
 	// ── Bottom sheet state ─────────────────────────────────────
 	let sheetItem: any = null;
 	let sheetLocation = 'inRoom';
-	let sheetDate = 'today';
+	let sheetDate: 'today' | 'tomorrow' = 'today';
 	let sheetTime = '';
 	let sheetGuests = 1;
 
-	const TIME_SLOTS = ['10:00','11:30','13:00','14:30','16:00','17:30','19:00','20:30'];
-	const TAKEN = ['13:00','17:30'];
+	// Live availability from the spa MCP (same source the voice pipeline uses).
+	let slots: { time: string; isAvailable: boolean }[] = [];
+	let slotsLoading = false;
+
+	// today/tomorrow → real YYYY-MM-DD (local), matching the voice booking flow.
+	function isoDate(which: 'today' | 'tomorrow'): string {
+		const d = new Date();
+		if (which === 'tomorrow') d.setDate(d.getDate() + 1);
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return `${y}-${m}-${day}`;
+	}
+
+	async function loadAvailability() {
+		if (!sheetItem) return;
+		slotsLoading = true;
+		slots = [];
+		sheetTime = '';
+		try {
+			const res = await fetch(`/api/spa?serviceId=${encodeURIComponent(sheetItem.id)}&date=${isoDate(sheetDate)}`);
+			if (res.ok) {
+				const payload = await res.json();
+				slots = payload.slots ?? [];
+			}
+		} catch {
+			slots = [];
+		} finally {
+			slotsLoading = false;
+		}
+	}
 
 	function openSheet(service: any) {
 		sheetItem = service;
@@ -23,15 +53,30 @@
 		sheetDate = 'today';
 		sheetTime = '';
 		sheetGuests = 1;
+		loadAvailability();
 	}
 	function closeSheet() { sheetItem = null; }
 
+	function pickDate(which: 'today' | 'tomorrow') {
+		if (sheetDate === which) return;
+		sheetDate = which;
+		loadAvailability();
+	}
+
 	async function submitBooking() {
-		if (!sheetItem || !sheetDate || !sheetTime) return;
+		if (!sheetItem || !sheetTime) return;
 		await fetch(`/api/spa/${sheetItem.id}`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ date: sheetDate, time: sheetTime, location: sheetLocation, guests: sheetGuests })
+			body: JSON.stringify({
+				// Mirror the voice flow (ai-conversation.ts): never send null — the
+				// room store is in-memory and resets on hard reload (persistence is TODO).
+				roomId: $roomNumber ?? 'guest',
+				date: isoDate(sheetDate),
+				time: sheetTime,
+				location: sheetLocation,
+				guests: sheetGuests
+			})
 		});
 		closeSheet();
 	}
@@ -59,16 +104,17 @@
 </div>
 
 <div class="spa-list">
+	{#if data.services.length === 0}
+		<div class="spa-empty">
+			{data.sourceError ? 'Spa services are temporarily unavailable. Please try again shortly.' : 'No spa treatments available right now.'}
+		</div>
+	{/if}
 	{#each data.services as s}
 		<div class="spa-card">
 			<div class="spa-thumb">
-				{#if s.imageUrl}
-					<img src={s.imageUrl} alt={s.name.en} loading="lazy" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
-				{:else}
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-						{@html GLYPH_PATHS[s.glyph] ?? GLYPH_PATHS.leaf}
-					</svg>
-				{/if}
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					{@html GLYPH_PATHS[s.glyph] ?? GLYPH_PATHS.leaf}
+				</svg>
 			</div>
 			<div class="info">
 				<div class="name">
@@ -123,23 +169,29 @@
 			<div class="field-block">
 				<span class="lbl">Date</span>
 				<div class="seg">
-					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>Today</button>
-					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>Tomorrow</button>
+					<button class:on={sheetDate === 'today'} on:click={() => pickDate('today')}>Today</button>
+					<button class:on={sheetDate === 'tomorrow'} on:click={() => pickDate('tomorrow')}>Tomorrow</button>
 				</div>
 			</div>
 
 			<div class="field-block">
 				<span class="lbl">Available time slots</span>
-				<div class="slot-grid">
-					{#each TIME_SLOTS as slot}
-						<button
-							class="slot"
-							class:on={sheetTime === slot}
-							disabled={TAKEN.includes(slot)}
-							on:click={() => sheetTime = slot}
-						>{slot}</button>
-					{/each}
-				</div>
+				{#if slotsLoading}
+					<div class="slots-note">Checking availability…</div>
+				{:else if slots.length === 0}
+					<div class="slots-note">No times available for this day.</div>
+				{:else}
+					<div class="slot-grid">
+						{#each slots as slot}
+							<button
+								class="slot"
+								class:on={sheetTime === slot.time}
+								disabled={!slot.isAvailable}
+								on:click={() => sheetTime = slot.time}
+							>{slot.time}</button>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<div class="qty-row">
@@ -201,7 +253,6 @@
 		color: var(--gold-600);
 		border: 1px solid rgba(200,164,92,.25);
 	}
-	.spa-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 	.spa-thumb svg { width: 32px; height: 32px; }
 
 	.info { flex: 1; min-width: 0; }
@@ -312,6 +363,16 @@
 		box-shadow: var(--sh-1); font-weight: 600;
 	}
 
+	.slots-note {
+		font: 500 13px/1.4 var(--font-ui); color: var(--ink-3);
+		padding: 10px 0 18px;
+	}
+	.spa-empty {
+		background: var(--white); border: 1px solid var(--line);
+		border-radius: var(--r-lg); padding: 28px 20px;
+		text-align: center; color: var(--ink-3);
+		font: 500 13.5px/1.5 var(--font-ui);
+	}
 	.slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
 	.slot {
 		border: 1px solid var(--line); background: var(--white);

@@ -13,7 +13,7 @@
 import OpenAI from 'openai';
 
 const BASE_URL = process.env.SEALION_BASE_URL ?? 'https://api.sea-lion.ai/v1';
-const MODEL = process.env.SEALION_MODEL ?? 'aisingapore/Qwen-SEA-LION-v4.5-27B-IT';
+const MODEL = process.env.SEALION_MODEL ?? 'aisingapore/Gemma-SEA-LION-v4-27B-IT';
 const KEY = process.env.SEALION_API_KEY ?? '';
 
 async function main() {

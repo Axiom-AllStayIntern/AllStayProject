@@ -1,43 +1,86 @@
-let currentAudio:   HTMLAudioElement | null = null;
-let abortPlayback:  (() => void) | null = null;
-let fetchAbort:     AbortController | null = null;
+// Text-to-speech with a SENTENCE-LEVEL streaming queue.
+//
+// Old behaviour: synthesize the whole reply, then play one clip — the guest
+// watched text stream on screen but heard nothing until the full sentence was
+// synthesized. New behaviour: the caller enqueues sentences AS they stream out
+// of the LLM; each is synthesized and played in order, so speech begins after
+// the first sentence. stopSpeaking() clears the queue + aborts the current clip
+// (used for barge-in / session end).
 
-/** Stop any in-flight TTS fetch, audio playback, or Web Speech utterance. */
-export function stopSpeaking() {
-	// 1. Abort the in-flight fetch / blob read
-	if (fetchAbort) {
-		fetchAbort.abort();
-		fetchAbort = null;
-	}
-	// 2. Stop HTMLAudioElement playback
-	if (currentAudio) {
-		currentAudio.pause();
-		currentAudio = null;
-	}
-	// 3. Resolve the awaited speakText promise
+let currentAudio:  HTMLAudioElement | null = null;
+let abortPlayback: (() => void) | null = null;
+let fetchAbort:    AbortController | null = null;
+
+// ── Sentence queue ───────────────────────────────────────────────────────────
+let speechQueue:  string[] = [];
+let queuePlaying = false;
+let drainWaiters: Array<() => void> = [];
+
+/** Abort just the CURRENT clip (in-flight fetch, audio element, or Web Speech). */
+function stopCurrentClip() {
+	if (fetchAbort) { fetchAbort.abort(); fetchAbort = null; }
+	if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 	abortPlayback?.();
 	abortPlayback = null;
-	// 4. Stop Web Speech fallback if active
 	if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 		window.speechSynthesis.cancel();
 	}
 }
 
+function resolveDrainWaiters() {
+	const waiters = drainWaiters;
+	drainWaiters = [];
+	queuePlaying = false;
+	waiters.forEach((r) => r());
+}
+
+/** Stop everything: clear the pending queue AND abort the current clip. */
+export function stopSpeaking() {
+	speechQueue = [];
+	stopCurrentClip();
+	resolveDrainWaiters();
+}
+
 export function isSpeaking(): boolean {
-	return (currentAudio !== null && !currentAudio.paused) || !!fetchAbort;
+	return queuePlaying || (currentAudio !== null && !currentAudio.paused) || !!fetchAbort;
 }
 
 /**
- * Speak text via OpenAI TTS endpoint.
- * Falls back to Web Speech API if the network call fails.
- * Resolves when audio finishes OR when stopSpeaking() is called.
+ * Enqueue one sentence to be spoken after everything already queued. Starts the
+ * drain loop if idle. Returns immediately (non-blocking).
  */
-export async function speakText(text: string): Promise<void> {
-	stopSpeaking();
+export function enqueueSpeech(text: string): void {
+	const t = text.trim();
+	if (!t) return;
+	speechQueue.push(t);
+	if (!queuePlaying) void drainQueue();
+}
 
+async function drainQueue(): Promise<void> {
+	queuePlaying = true;
+	while (speechQueue.length > 0) {
+		const next = speechQueue.shift()!;
+		await speakOne(next);
+	}
+	resolveDrainWaiters();
+}
+
+/** Resolves once the queue has fully drained (or was stopped). */
+export function waitForSpeechDrain(): Promise<void> {
+	if (!queuePlaying && speechQueue.length === 0) return Promise.resolve();
+	return new Promise((r) => drainWaiters.push(r));
+}
+
+/**
+ * Speak a single piece of text as ONE clip (used by the goodbye path and by the
+ * queue drain). Public speakText resets the queue first; the drain loop calls
+ * speakOne directly so it doesn't wipe the sentences still waiting behind it.
+ * Resolves when audio finishes OR when stopCurrentClip()/stopSpeaking() fires.
+ */
+function speakOne(text: string): Promise<void> {
 	return new Promise<void>(async (resolve) => {
 		// Register abort handler immediately — before any await —
-		// so stopSpeaking() can resolve this promise at any point.
+		// so stopCurrentClip() can resolve this promise at any point.
 		abortPlayback = resolve;
 
 		try {
@@ -77,13 +120,22 @@ export async function speakText(text: string): Promise<void> {
 			fetchAbort = null;
 			const isAbort = err instanceof Error && err.name === 'AbortError';
 			if (isAbort) {
-				// Already resolved by stopSpeaking via abortPlayback
+				// Already resolved by stopCurrentClip via abortPlayback
 				return;
 			}
 			// Network/parse error → try Web Speech fallback
 			fallbackSpeak(text, resolve);
 		}
 	});
+}
+
+/**
+ * Speak text as a single utterance, cancelling anything already playing/queued.
+ * Kept for the goodbye/close-session path. Resolves when done or stopped.
+ */
+export async function speakText(text: string): Promise<void> {
+	stopSpeaking();
+	await speakOne(text);
 }
 
 function fallbackSpeak(text: string, onDone: () => void) {

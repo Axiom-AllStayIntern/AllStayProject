@@ -17,7 +17,7 @@
 
 	setupI18n();
 
-	const STANDALONE = ['/login', '/room-select', '/confirmation'];
+	const STANDALONE = ['/login', '/room-select', '/confirmation', '/staff'];
 	$: isStandalone = STANDALONE.some((p) => $page.url.pathname.startsWith(p));
 
 	onMount(() => {

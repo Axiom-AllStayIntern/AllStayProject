@@ -39,7 +39,12 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	try {
 		res = await fetch(url, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				// StreamableHTTPServerTransport requires BOTH content types in Accept,
+				// otherwise it rejects the request with HTTP 406.
+				Accept: 'application/json, text/event-stream'
+			},
 			body: JSON.stringify(body)
 		});
 	} catch {
@@ -50,7 +55,18 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 		return { success: false, error: `HTTP ${res.status}` };
 	}
 
-	const json = await res.json();
+	// StreamableHTTPServerTransport may answer as JSON or as an SSE stream
+	// (`event: message\ndata: <json-rpc>`); handle both.
+	let json: { result?: unknown; error?: { message?: string } };
+	try {
+		const contentType = res.headers.get('content-type') ?? '';
+		json = contentType.includes('text/event-stream')
+			? parseSseJsonRpc(await res.text())
+			: await res.json();
+	} catch (e) {
+		return { success: false, error: `bad MCP response: ${(e as Error).message}` };
+	}
+
 	if (json.error) {
 		return { success: false, error: json.error.message };
 	}
@@ -58,6 +74,24 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	// MCP `tools/call` wraps the payload as { content: [{ type: 'text', text: '<json>' }] }.
 	// Unwrap it so callers get the actual payload object as `data`, not the envelope.
 	return { success: true, data: unwrapMcpResult(json.result) };
+}
+
+// Pull the JSON-RPC envelope out of an SSE body. The transport emits one or
+// more `data: <json>` lines; the last data payload holds the tools/call result.
+function parseSseJsonRpc(body: string): { result?: unknown; error?: { message?: string } } {
+	let last: { result?: unknown; error?: { message?: string } } = {};
+	for (const line of body.split('\n')) {
+		const trimmed = line.trim();
+		if (!trimmed.startsWith('data:')) continue;
+		const payload = trimmed.slice(5).trim();
+		if (!payload || payload === '[DONE]') continue;
+		try {
+			last = JSON.parse(payload);
+		} catch {
+			// ignore keep-alive / non-JSON data lines
+		}
+	}
+	return last;
 }
 
 function unwrapMcpResult(result: unknown): unknown {

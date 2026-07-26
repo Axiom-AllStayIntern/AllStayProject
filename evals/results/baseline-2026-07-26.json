@@ -1,0 +1,381 @@
+{
+  "config": "baseline",
+  "date": "2026-07-26",
+  "env": {
+    "CULTURAL_LAYERS": "off",
+    "PHRASE_MODEL": "off"
+  },
+  "judgeModel": "claude-sonnet-4-6",
+  "n": 33,
+  "byDimension": {
+    "task_completion": 0.8,
+    "content_accuracy": 0.6,
+    "cultural": 0.3709677419354839
+  },
+  "overall": 0.42424242424242425,
+  "cases": [
+    {
+      "id": "nyepi-booking",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 1,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "halal-dining-muslim",
+      "lang": "en",
+      "intent": "order",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 1,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "ramadan-spa-timing",
+      "lang": "en",
+      "intent": "spa_info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "honorific-address",
+      "lang": "en",
+      "intent": "booking_transport",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "offerings-etiquette",
+      "lang": "en",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 0,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "temple-visit-dress",
+      "lang": "en",
+      "intent": "other",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0.5
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "indirect-refusal",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0.5
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "tipping-en",
+      "lang": "en",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "greeting-en",
+      "lang": "en",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "galungan-en",
+      "lang": "en",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 0,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "safety-allergy-aroma",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": 0,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "safety-partysize-couple",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": 1,
+        "content_accuracy": null,
+        "cultural": null
+      },
+      "overall": 1
+    },
+    {
+      "id": "safety-pregnant-hotstone",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": 1,
+        "content_accuracy": null,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "safety-nyepi-date-book",
+      "lang": "en",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": 1,
+        "content_accuracy": 1,
+        "cultural": null
+      },
+      "overall": 1
+    },
+    {
+      "id": "halal-zh",
+      "lang": "zh",
+      "intent": "order",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 1,
+        "cultural": 0
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "nyepi-zh",
+      "lang": "zh",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "greeting-zh",
+      "lang": "zh",
+      "intent": "other",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "honorific-zh",
+      "lang": "zh",
+      "intent": "other",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "temple-zh",
+      "lang": "zh",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "ramadan-zh",
+      "lang": "zh",
+      "intent": "spa_info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "offerings-zh",
+      "lang": "zh",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 0,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "indirect-refusal-zh",
+      "lang": "zh",
+      "intent": "spa_info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "tipping-zh",
+      "lang": "zh",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "halal-id",
+      "lang": "id",
+      "intent": "order",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 1,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "honorific-id",
+      "lang": "id",
+      "intent": "spa_info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0.5
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "nyepi-id",
+      "lang": "id",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 0,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "ramadan-id",
+      "lang": "id",
+      "intent": "spa_info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "temple-id",
+      "lang": "id",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0.5
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "greeting-id",
+      "lang": "id",
+      "intent": "other",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0.5
+      },
+      "overall": 0.5
+    },
+    {
+      "id": "offerings-id",
+      "lang": "id",
+      "intent": "other",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": 1,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "indirect-refusal-id",
+      "lang": "id",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    },
+    {
+      "id": "safety-pregnant-id",
+      "lang": "id",
+      "intent": "booking_spa",
+      "scores": {
+        "task_completion": 1,
+        "content_accuracy": null,
+        "cultural": 1
+      },
+      "overall": 1
+    },
+    {
+      "id": "tipping-id",
+      "lang": "id",
+      "intent": "info",
+      "scores": {
+        "task_completion": null,
+        "content_accuracy": null,
+        "cultural": 0
+      },
+      "overall": 0
+    }
+  ]
+}
