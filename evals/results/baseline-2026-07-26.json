@@ -9,10 +9,10 @@
   "n": 33,
   "byDimension": {
     "task_completion": 0.8,
-    "content_accuracy": 0.6,
-    "cultural": 0.3709677419354839
+    "content_accuracy": 0.9,
+    "cultural": 0.5645161290322581
   },
-  "overall": 0.42424242424242425,
+  "overall": 0.6287878787878788,
   "cases": [
     {
       "id": "nyepi-booking",
@@ -64,10 +64,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "temple-visit-dress",
@@ -76,9 +76,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "indirect-refusal",
@@ -98,9 +98,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 0.5
       },
-      "overall": 0
+      "overall": 0.5
     },
     {
       "id": "greeting-en",
@@ -109,9 +109,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "galungan-en",
@@ -119,10 +119,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 0.5
       },
-      "overall": 0
+      "overall": 0.75
     },
     {
       "id": "safety-allergy-aroma",
@@ -182,7 +182,7 @@
     {
       "id": "nyepi-zh",
       "lang": "zh",
-      "intent": "info",
+      "intent": "booking_transport",
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
@@ -219,9 +219,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "ramadan-zh",
@@ -230,9 +230,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 1
+        "cultural": 0
       },
-      "overall": 1
+      "overall": 0
     },
     {
       "id": "offerings-zh",
@@ -240,10 +240,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
+        "content_accuracy": 1,
         "cultural": 0
       },
-      "overall": 0
+      "overall": 0.5
     },
     {
       "id": "indirect-refusal-zh",
@@ -285,9 +285,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "nyepi-id",
@@ -318,9 +318,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "greeting-id",
@@ -329,9 +329,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "offerings-id",
@@ -373,9 +373,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     }
   ]
 }

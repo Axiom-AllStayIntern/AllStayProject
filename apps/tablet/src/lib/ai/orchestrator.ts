@@ -277,6 +277,15 @@ async function dispatchParsed(
 			return { reply: parsed.reply, intent: 'switch_language' };
 		case 'close_conversation':
 			return { reply: parsed.reply, intent: 'close_conversation' };
+		case 'other': {
+			// Off-catalogue questions (etiquette, culture, greetings) → the same
+			// culturally-grounded answer path as `info`, not Claude's ungrounded draft.
+			const result = await handleInfoIntent({
+				query: (parsed.entities.query as string) ?? input.message,
+				language: input.language
+			});
+			return { reply: result.reply, intent: 'other' };
+		}
 		default:
 			return { reply: parsed.reply, intent: parsed.intent };
 	}

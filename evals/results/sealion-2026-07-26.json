@@ -8,11 +8,11 @@
   "judgeModel": "claude-sonnet-4-6",
   "n": 33,
   "byDimension": {
-    "task_completion": 0.8,
-    "content_accuracy": 0.6,
-    "cultural": 0.4032258064516129
+    "task_completion": 0.75,
+    "content_accuracy": 1,
+    "cultural": 0.603448275862069
   },
-  "overall": 0.4393939393939394,
+  "overall": 0.6532258064516129,
   "cases": [
     {
       "id": "nyepi-booking",
@@ -64,10 +64,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "temple-visit-dress",
@@ -76,9 +76,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "indirect-refusal",
@@ -98,9 +98,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "greeting-en",
@@ -109,9 +109,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "galungan-en",
@@ -119,10 +119,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 0.5
       },
-      "overall": 0
+      "overall": 0.75
     },
     {
       "id": "safety-allergy-aroma",
@@ -175,14 +175,14 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": 1,
-        "cultural": 1
+        "cultural": 0
       },
-      "overall": 1
+      "overall": 0.5
     },
     {
       "id": "nyepi-zh",
       "lang": "zh",
-      "intent": "info",
+      "intent": "booking_transport",
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
@@ -219,9 +219,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "ramadan-zh",
@@ -240,10 +240,10 @@
       "intent": "info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "indirect-refusal-zh",
@@ -285,20 +285,20 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 1
+        "cultural": 0.5
       },
-      "overall": 1
+      "overall": 0.5
     },
     {
       "id": "nyepi-id",
       "lang": "id",
-      "intent": "booking_spa",
+      "intent": "spa_info",
       "scores": {
         "task_completion": null,
-        "content_accuracy": 0,
-        "cultural": 0
+        "content_accuracy": 1,
+        "cultural": 1
       },
-      "overall": 0
+      "overall": 1
     },
     {
       "id": "ramadan-id",
@@ -318,9 +318,9 @@
       "scores": {
         "task_completion": null,
         "content_accuracy": null,
-        "cultural": 0.5
+        "cultural": 1
       },
-      "overall": 0.5
+      "overall": 1
     },
     {
       "id": "greeting-id",
@@ -358,24 +358,16 @@
     {
       "id": "safety-pregnant-id",
       "lang": "id",
-      "intent": "booking_spa",
-      "scores": {
-        "task_completion": 1,
-        "content_accuracy": null,
-        "cultural": 1
-      },
-      "overall": 1
+      "scores": {},
+      "overall": null,
+      "error": "Connection error."
     },
     {
       "id": "tipping-id",
       "lang": "id",
-      "intent": "info",
-      "scores": {
-        "task_completion": null,
-        "content_accuracy": null,
-        "cultural": 0
-      },
-      "overall": 0
+      "scores": {},
+      "overall": null,
+      "error": "Connection error."
     }
   ]
 }

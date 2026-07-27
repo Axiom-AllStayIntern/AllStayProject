@@ -8,7 +8,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
       "Bash(netstat -ano)",
       "Bash(find \"C:/Users/akiwc/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/dbdc43c1-8995-4c66-a8f4-cbeccc01c41e/96dbf42a-ed72-4ce1-842e-eb888629b3e7/skills/codebase-technical-analysis-writer\" -type f)",
-      "Bash(grep -v '^[[:space:]]*$')"
+      "Bash(grep -v '^[[:space:]]*$')",
+      "Bash(node -e ' *)"
     ]
   }
 }

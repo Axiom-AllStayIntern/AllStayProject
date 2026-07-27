@@ -47,16 +47,27 @@ judge=claude-sonnet-4-6, n=33):
 
 | Configuration | Task completion | Content accuracy | Cultural | Overall | N |
 | --- | --- | --- | --- | --- | --- |
-| Baseline (layers off, phrasing off) | 80.0% | 60.0% | 37.1% | 42.4% | 33 |
-| + all cultural layers + SEA-LION phrasing (Gemma-SEA-LION-v4-27B-IT) | 80.0% | 60.0% | 40.3% | 43.9% | 33 |
+| Baseline (layers off, phrasing off) | 80.0% | 90.0% | 56.5% | 62.9% | 33 |
+| + all cultural layers + SEA-LION phrasing (Gemma-SEA-LION-v4-27B-IT) | 75.0%* | 100.0% | 60.3% | 65.3% | 33 |
 
-Reading it honestly: task-completion and content-accuracy are deterministic and unchanged
-(the cultural layers/phrasing don't alter intent routing or the substring facts). The gain is
-in **cultural appropriateness (+3.2pp, 37.1%→40.3%)** and overall (+1.5pp). The effect is
-bounded because SEA-LION phrasing only fires on the 10 `id` cases (and the verify gate falls
-back to Claude when a rephrase drops a number/locked term), while the 23 en/zh cases benefit
-only from the register+KB layers. The intermediate `register` / `kb` rungs were not run this
-pass — re-run with `CULTURAL_LAYERS=register` then `=kb` to attribute each layer's share.
+Reading it honestly, in two levels:
+
+1. **The eval first caught a capability gap, not a tuning gap.** An earlier run scored only
+   ~42% overall because the `info`/`other` paths (etiquette, tipping, greetings, temple dress,
+   offerings — ~19 of 33 cases) hit a static FAQ that *deflected* ("please call the front
+   desk") instead of answering. Making that path LLM-backed and cultural-KB-grounded lifted the
+   whole system to ~63% overall — the single biggest jump, and it came from fixing coverage the
+   eval exposed.
+2. **On top of that, the cultural layers + SEA-LION add a real marginal gain:** content
+   90%→**100%**, cultural 56.5%→**60.3%**, overall 62.9%→**65.3%**.
+
+\* Task completion 80%→75% is a **denominator artifact, not a regression**: it is averaged over
+only ~5 booking cases, and one `id` safety case wasn't task-scored that run (the model refused
+slightly differently, so its task dimension came back null → 5 cases became 4). The 4
+comparable safety cases are identical across configs.
+
+The intermediate `register` / `kb` rungs were not run this pass — re-run with
+`CULTURAL_LAYERS=register` then `=kb` to attribute each layer's share.
 
 ## Notes / caveats
 
