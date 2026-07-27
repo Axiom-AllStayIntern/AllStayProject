@@ -109,3 +109,9 @@ storybook-static/
 
 # Docker (if used)
 .dockerignore
+
+# -------------------------------
+# SvelteKit
+# -------------------------------
+.svelte-kit/
+apps/tablet/.svelte-kit/

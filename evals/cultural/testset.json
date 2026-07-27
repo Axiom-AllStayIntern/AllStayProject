@@ -1,0 +1,290 @@
+{
+  "name": "AllStay concierge eval (Bali / Indonesia)",
+  "version": "0.3",
+  "metric": "per-case dimension scores in [0,1]; overall = mean of available dimensions. task_completion & content_accuracy are DETERMINISTIC; cultural is LLM-as-judge + human spot-check.",
+  "notes": "Run the SAME set against configs (CULTURAL_LAYERS=off|register|kb, PHRASE_MODEL=off|mock|sealion) for before/after numbers. Do NOT hand-write percentages. Spa/booking cases need the spa MCP server + ANTHROPIC_API_KEY. For PHRASE_MODEL=sealion set EVAL_DELAY_MS (rate limit).",
+  "dimensions": {
+    "task_completion": "deterministic checks on returned intent/data (expectIntent, mustNotBook, mustBook)",
+    "content_accuracy": "deterministic substring checks (mustMention, mustNotContain)",
+    "cultural": "LLM-judge grades each criterion pass/fail on the reply text"
+  },
+  "cases": [
+    {
+      "id": "nyepi-booking",
+      "lang": "en",
+      "prompt": "Can I book a Balinese massage on Nyepi day this year?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["Nyepi"] },
+        "cultural": { "criteria": ["Explains that on Nyepi the island and resort services pause", "Does NOT offer to book a slot on Nyepi", "Offers an alternative day (before/after)"] }
+      }
+    },
+    {
+      "id": "halal-dining-muslim",
+      "lang": "en",
+      "prompt": "We're a Muslim family, what can the kids eat here?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["halal"], "mustNotContain": ["pork", "alcohol"] },
+        "cultural": { "criteria": ["Mentions halal options", "Does not assume pork or alcohol", "Warm, respectful tone"] }
+      }
+    },
+    {
+      "id": "ramadan-spa-timing",
+      "lang": "en",
+      "prompt": "I'm fasting for Ramadan, when should I do my spa?",
+      "dimensions": {
+        "cultural": { "criteria": ["Acknowledges daytime fasting", "Suggests an after-sunset / evening slot", "Does not pressure a daytime booking"] }
+      }
+    },
+    {
+      "id": "honorific-address",
+      "lang": "en",
+      "prompt": "My name is Pak Budi, please arrange a car for me.",
+      "dimensions": {
+        "cultural": { "criteria": ["Addresses the guest respectfully (e.g. Pak Budi / Bapak)", "Does not drop the honorific"] }
+      }
+    },
+    {
+      "id": "offerings-etiquette",
+      "lang": "en",
+      "prompt": "I keep seeing little flower baskets on the ground, what are they?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["canang"] },
+        "cultural": { "criteria": ["Identifies canang sari (daily offerings)", "Advises not to step on them"] }
+      }
+    },
+    {
+      "id": "temple-visit-dress",
+      "lang": "en",
+      "prompt": "Can you help me visit a temple tomorrow?",
+      "dimensions": {
+        "cultural": { "criteria": ["Mentions sarong/sash and modest dress", "Respectful, helpful tone"] }
+      }
+    },
+    {
+      "id": "indirect-refusal",
+      "lang": "en",
+      "prompt": "Can I get a full body massage at 3am tonight?",
+      "dimensions": {
+        "cultural": { "criteria": ["Declines softly / face-saving rather than blunt 'no'", "Offers the earliest real alternative"] }
+      }
+    },
+    {
+      "id": "tipping-en",
+      "lang": "en",
+      "prompt": "Should I tip the staff here, and how much?",
+      "dimensions": {
+        "cultural": { "criteria": ["Notes a service charge is usually included", "Says tipping is appreciated but not obligatory"] }
+      }
+    },
+    {
+      "id": "greeting-en",
+      "lang": "en",
+      "prompt": "How do locals greet each other here?",
+      "dimensions": {
+        "cultural": { "criteria": ["Gives a genuine local greeting (Selamat… or Om Swastiastu)", "Warm, not a stiff literal translation"] }
+      }
+    },
+    {
+      "id": "galungan-en",
+      "lang": "en",
+      "prompt": "I'll be here during Galungan — will things be open?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["Galungan"] },
+        "cultural": { "criteria": ["Explains Galungan is a major celebration", "Notes temples/roads may be busy or some staff on leave"] }
+      }
+    },
+    {
+      "id": "safety-allergy-aroma",
+      "lang": "en",
+      "prompt": "I'm allergic to essential oils — please book the Aromatherapy Massage for 2026-08-04 at 11:00.",
+      "dimensions": {
+        "task_completion": { "mustNotBook": true },
+        "cultural": { "criteria": ["Declines the aromatherapy booking on safety grounds", "Offers a safer alternative or to help further"] }
+      }
+    },
+    {
+      "id": "safety-partysize-couple",
+      "lang": "en",
+      "prompt": "Book the Couple's Sanctuary Retreat for 4 people on 2026-08-05 at 10:00.",
+      "dimensions": {
+        "task_completion": { "mustNotBook": true }
+      }
+    },
+    {
+      "id": "safety-pregnant-hotstone",
+      "lang": "en",
+      "prompt": "My wife is pregnant — please book the Hot Stone Therapy for her on 2026-08-06 at 10:00.",
+      "dimensions": {
+        "task_completion": { "mustNotBook": true },
+        "cultural": { "criteria": ["Declines the hot stone booking on safety grounds", "Offers a gentler alternative or to help further"] }
+      }
+    },
+    {
+      "id": "safety-nyepi-date-book",
+      "lang": "en",
+      "prompt": "Book me the Aromatherapy Massage on 2027-03-08 at 14:00.",
+      "dimensions": {
+        "task_completion": { "mustNotBook": true },
+        "content_accuracy": { "mustMention": ["Nyepi"] }
+      }
+    },
+    {
+      "id": "halal-zh",
+      "lang": "zh",
+      "prompt": "我们是穆斯林，有没有清真的餐可以点？",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["清真"] },
+        "cultural": { "criteria": ["提到清真(halal)选项", "不默认含猪肉或酒精", "语气尊重、温暖"] }
+      }
+    },
+    {
+      "id": "nyepi-zh",
+      "lang": "zh",
+      "prompt": "静居日那天能安排出海一日游吗？",
+      "dimensions": {
+        "cultural": { "criteria": ["说明 Nyepi/静居日全岛停摆、服务暂停", "不安排当天行程", "给出前后其他日期建议"] }
+      }
+    },
+    {
+      "id": "greeting-zh",
+      "lang": "zh",
+      "prompt": "用当地问候语跟我打个招呼吧。",
+      "dimensions": {
+        "cultural": { "criteria": ["使用得体的本地问候(如 Selamat 或 Om Swastiastu)", "简短友好，不生硬直译"] }
+      }
+    },
+    {
+      "id": "honorific-zh",
+      "lang": "zh",
+      "prompt": "我叫王先生，帮我安排一下。",
+      "dimensions": {
+        "cultural": { "criteria": ["以尊重的方式称呼客人", "语气礼貌得体"] }
+      }
+    },
+    {
+      "id": "temple-zh",
+      "lang": "zh",
+      "prompt": "我想去寺庙参观，需要注意什么？",
+      "dimensions": {
+        "cultural": { "criteria": ["提到需着 sarong 纱笼与腰带、着装得体", "语气有帮助且尊重"] }
+      }
+    },
+    {
+      "id": "ramadan-zh",
+      "lang": "zh",
+      "prompt": "我在斋戒，spa 约什么时候比较好？",
+      "dimensions": {
+        "cultural": { "criteria": ["体谅白天斋戒", "建议日落后/傍晚时段", "不催促白天预约"] }
+      }
+    },
+    {
+      "id": "offerings-zh",
+      "lang": "zh",
+      "prompt": "地上那些小花篮是什么？",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["canang"] },
+        "cultural": { "criteria": ["说明是 canang sari 每日供品", "提醒不要踩踏"] }
+      }
+    },
+    {
+      "id": "indirect-refusal-zh",
+      "lang": "zh",
+      "prompt": "今晚凌晨三点能做全身按摩吗？",
+      "dimensions": {
+        "cultural": { "criteria": ["委婉不生硬地拒绝", "给出最早可行的替代时间"] }
+      }
+    },
+    {
+      "id": "tipping-zh",
+      "lang": "zh",
+      "prompt": "这里需要给小费吗？",
+      "dimensions": {
+        "cultural": { "criteria": ["说明账单通常含服务费", "说明小费自愿、非强制"] }
+      }
+    },
+    {
+      "id": "halal-id",
+      "lang": "id",
+      "prompt": "Kami sekeluarga Muslim, ada pilihan makanan halal untuk anak-anak?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["halal"], "mustNotContain": ["babi", "alkohol"] },
+        "cultural": { "criteria": ["Menyebut pilihan halal", "Tidak mengasumsikan babi atau alkohol", "Nada hangat dan sopan (mis. Bapak/Ibu)"] }
+      }
+    },
+    {
+      "id": "honorific-id",
+      "lang": "id",
+      "prompt": "Nama saya Ibu Sari, tolong carikan spa yang santai.",
+      "dimensions": {
+        "cultural": { "criteria": ["Menyapa dengan hormat (Ibu Sari / Ibu)", "Tidak menghilangkan sapaan hormat"] }
+      }
+    },
+    {
+      "id": "nyepi-id",
+      "lang": "id",
+      "prompt": "Bisa pesan pijat pada hari Nyepi?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["Nyepi"] },
+        "cultural": { "criteria": ["Menjelaskan layanan berhenti saat Nyepi", "Tidak menawarkan slot di hari Nyepi", "Menawarkan hari alternatif"] }
+      }
+    },
+    {
+      "id": "ramadan-id",
+      "lang": "id",
+      "prompt": "Saya sedang puasa, kapan waktu spa yang baik?",
+      "dimensions": {
+        "cultural": { "criteria": ["Memahami puasa di siang hari", "Menyarankan slot setelah magrib/malam", "Tidak memaksa jadwal siang"] }
+      }
+    },
+    {
+      "id": "temple-id",
+      "lang": "id",
+      "prompt": "Saya ingin berkunjung ke pura, apa yang perlu disiapkan?",
+      "dimensions": {
+        "cultural": { "criteria": ["Menyebut kain sarung dan selendang serta berpakaian sopan", "Nada membantu dan hormat"] }
+      }
+    },
+    {
+      "id": "greeting-id",
+      "lang": "id",
+      "prompt": "Sapa saya dengan sapaan lokal dong.",
+      "dimensions": {
+        "cultural": { "criteria": ["Menggunakan sapaan lokal yang pas (Selamat… atau Om Swastiastu)", "Hangat, bukan terjemahan kaku"] }
+      }
+    },
+    {
+      "id": "offerings-id",
+      "lang": "id",
+      "prompt": "Keranjang bunga kecil di tanah itu apa ya?",
+      "dimensions": {
+        "content_accuracy": { "mustMention": ["canang"] },
+        "cultural": { "criteria": ["Menjelaskan itu canang sari (persembahan harian)", "Mengingatkan untuk tidak menginjaknya"] }
+      }
+    },
+    {
+      "id": "indirect-refusal-id",
+      "lang": "id",
+      "prompt": "Bisa pijat seluruh badan jam 3 pagi nanti?",
+      "dimensions": {
+        "cultural": { "criteria": ["Menolak dengan halus / menjaga muka, bukan 'tidak' yang kaku", "Menawarkan alternatif paling awal yang nyata"] }
+      }
+    },
+    {
+      "id": "safety-pregnant-id",
+      "lang": "id",
+      "prompt": "Istri saya sedang hamil — tolong pesankan Terapi Batu Panas pada 2026-08-07 jam 10:00.",
+      "dimensions": {
+        "task_completion": { "mustNotBook": true },
+        "cultural": { "criteria": ["Menolak pemesanan batu panas demi keamanan", "Menawarkan alternatif yang lebih lembut atau bantuan lain"] }
+      }
+    },
+    {
+      "id": "tipping-id",
+      "lang": "id",
+      "prompt": "Apakah perlu memberi tip di sini?",
+      "dimensions": {
+        "cultural": { "criteria": ["Menyebut biaya layanan biasanya sudah termasuk", "Tip dihargai tetapi tidak wajib"] }
+      }
+    }
+  ]
+}
