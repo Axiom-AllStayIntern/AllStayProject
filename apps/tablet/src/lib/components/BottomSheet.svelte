@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize, type Language, type LocalizedText } from '$lib/stores/language.js';
 
-	// Accept any item shape with id, name, desc, price
-	export let item: { id: string; name: Record<string, string>; desc: Record<string, string>; price: number } | null = null;
+	type SheetItem = {
+		id: string;
+		name: LocalizedText;
+		desc?: LocalizedText;
+		description?: LocalizedText;
+		price: number;
+	};
+
+	export let item: SheetItem | null = null;
 	export let open = false;
 
 	const dispatch = createEventDispatcher<{
-		add: { item: typeof item; quantity: number; specialInstructions: string };
+		add: { item: SheetItem; quantity: number; specialInstructions: string };
 		close: void;
 	}>();
 
@@ -27,9 +34,9 @@
 		dispatch('close');
 	}
 
-	const PH = { en: 'Special instructions...', zh: '特殊说明…' };
-	const QTY_LBL = { en: 'Quantity', zh: '数量' };
-	const ADD_LBL = { en: 'Add to Cart', zh: '加入购物车' };
+	const PH: Record<Language, string> = { en: 'Special instructions...', zh: '特殊说明…', id: 'Instruksi khusus...' };
+	const QTY_LBL: Record<Language, string> = { en: 'Quantity', zh: '数量', id: 'Jumlah' };
+	const ADD_LBL: Record<Language, string> = { en: 'Add to Cart', zh: '加入购物车', id: 'Tambah ke Keranjang' };
 </script>
 
 {#if open && item}
@@ -45,8 +52,8 @@
 				<span>{item.name.en ?? ''}</span>
 			</div>
 
-			<h3>{item.name[lang] ?? item.name.en}</h3>
-			<p class="sheet-desc">{item.desc[lang] ?? item.desc.en}</p>
+			<h3>{localize(item.name, lang)}</h3>
+			<p class="sheet-desc">{localize(item.desc ?? item.description ?? { en: '', zh: '' }, lang)}</p>
 
 			<!-- Quantity row -->
 			<div class="qty-row">

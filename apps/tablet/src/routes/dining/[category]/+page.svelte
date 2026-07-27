@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { _ } from 'svelte-i18n';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
 	import { cart } from '$lib/stores/cart.js';
 	import { roomNumber } from '$lib/stores/room.js';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
@@ -18,12 +18,12 @@
 		sheetOpen = true;
 	}
 
-	function handleAdd(e: CustomEvent<{ item: MenuItem; quantity: number; specialInstructions: string }>) {
+	function handleAdd(e: CustomEvent<{ item: { id: string; name: LocalizedText; price: number }; quantity: number; specialInstructions: string }>) {
 		const { item, quantity, specialInstructions } = e.detail;
 		cart.addItem($roomNumber ?? '', {
 			source: 'dining',
 			itemId: item.id,
-			name: item.name[$language],
+			name: localize(item.name, $language),
 			price: item.price,
 			quantity,
 			specialInstructions
@@ -36,12 +36,12 @@
 		{#each data.items as item}
 			<button class="menu-item" on:click={() => openItem(item)} disabled={!item.isAvailable}>
 				<div class="menu-item__info">
-					<p class="menu-item__name">{item.name[$language]}</p>
-					<p class="menu-item__desc">{item.description[$language]}</p>
+					<p class="menu-item__name">{localize(item.name, $language)}</p>
+					<p class="menu-item__desc">{localize(item.description, $language)}</p>
 					<p class="menu-item__price">{formatPrice(item.price)}</p>
 				</div>
 				{#if item.imageUrl}
-					<img src={item.imageUrl} alt={item.name[$language]} class="menu-item__img" />
+					<img src={item.imageUrl} alt={localize(item.name, $language)} class="menu-item__img" />
 				{/if}
 			</button>
 		{/each}

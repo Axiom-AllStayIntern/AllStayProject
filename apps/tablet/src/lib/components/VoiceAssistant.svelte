@@ -13,6 +13,7 @@
 	// ── State machine ──────────────────────────────────────────────────────────
 	type State = 'idle' | 'listening' | 'processing' | 'speaking';
 	let state: State = 'idle';
+	const isIdle = () => state === 'idle';
 
 	// ── Session timer (20-min max) ─────────────────────────────────────────────
 	const SESSION_MAX_MS  = 20 * 60 * 1_000;
@@ -216,7 +217,7 @@
 		const blob = await drainRecorder();
 		releaseStream();
 
-		if (state === 'idle') return; // session ended by timer
+		if (isIdle()) return; // session ended by timer
 
 		// Trivially small blob → resume listening without resetting session
 		if (!blob || blob.size < 500) {
@@ -251,7 +252,7 @@
 			// so it isn't shown twice.
 			streamingReply = '';
 
-			if (state === 'idle') { stopSpeaking(); return; }
+			if (isIdle()) { stopSpeaking(); return; }
 
 			if (!response.text?.trim()) {
 				stopSpeaking();
@@ -281,7 +282,7 @@
 			await waitForSpeechDrain();
 			stopBargeMonitor();
 
-			if (state === 'idle') return;
+			if (isIdle()) return;
 
 			if (state === 'speaking') {
 				startListening(true);
@@ -290,7 +291,7 @@
 			streamingReply = '';
 			stopSpeaking();
 			stopBargeMonitor();
-			if (state !== 'idle') startListening();
+			if (!isIdle()) startListening();
 		}
 	}
 

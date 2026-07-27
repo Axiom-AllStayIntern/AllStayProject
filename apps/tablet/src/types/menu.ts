@@ -1,6 +1,7 @@
 export interface LocalizedString {
 	en: string;
 	zh: string;
+	id?: string;
 }
 
 export interface MenuItem {

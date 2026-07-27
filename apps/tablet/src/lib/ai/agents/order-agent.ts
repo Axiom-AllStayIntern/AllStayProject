@@ -131,6 +131,13 @@ const T = {
 		notFound: (dish: string) =>
 			`抱歉，菜单上没有找到"${dish}"，您可以浏览菜单点击添加。`,
 		failed:   () => '加入购物车失败，请重试。'
+	},
+	id: {
+		confirm:  (name: string, qty: number, price: string, notes: string) =>
+			`✓ ${name}${notes ? ` (${notes})` : ''} ×${qty} ditambahkan ke keranjang — ${price}.`,
+		notFound: (dish: string) =>
+			`Maaf, "${dish}" tidak ditemukan di menu. Silakan telusuri menu dan ketuk hidangan untuk menambahkannya.`,
+		failed:   () => 'Gagal menambahkan ke keranjang. Silakan coba lagi.'
 	}
 } as const;
 

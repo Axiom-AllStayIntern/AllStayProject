@@ -2,7 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
 	import { cart } from '$lib/stores/cart.js';
 	import { roomNumber } from '$lib/stores/room.js';
 	import { page } from '$app/stores';
@@ -12,12 +12,12 @@
 		id: string;
 		cat: string;
 		tags: string[];
-		name: { en: string; zh: string };
-		desc: { en: string; zh: string };
+		name: LocalizedText;
+		desc: LocalizedText;
 		price: number;
 		discount?: number;   // e.g. 0.8 = 80% of original (20% off / 8折)
 		imageUrl?: string;
-		promo?: { badge: { en: string; zh: string }; tagline: { en: string; zh: string } };
+		promo?: { badge: LocalizedText; tagline: LocalizedText };
 	}
 
 	const MENU: MenuItem[] = [
@@ -173,12 +173,12 @@
 	];
 
 	const CATS = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
-	const CAT_LABELS: Record<string, { en: string; zh: string }> = {
+	const CAT_LABELS: Record<string, LocalizedText> = {
 		All: { en: 'All', zh: '全部' }, Breakfast: { en: 'Breakfast', zh: '早餐' },
 		Lunch: { en: 'Lunch', zh: '午餐' }, Dinner: { en: 'Dinner', zh: '晚餐' },
 		Snacks: { en: 'Snacks', zh: '小吃' }, Drinks: { en: 'Drinks', zh: '饮品' }
 	};
-	const TAG_LABELS: Record<string, { en: string; zh: string }> = {
+	const TAG_LABELS: Record<string, LocalizedText> = {
 		noodles:  { en: 'Noodles',  zh: '面食' },
 		rice:     { en: 'Rice',     zh: '米饭' },
 		sandwich: { en: 'Sandwich', zh: '三明治' },
@@ -218,7 +218,7 @@
 		return n.toLocaleString('en-US').replace(/,/g, ' ') + ' IDR';
 	}
 
-	function salePrice(item: MenuItem): number {
+	function salePrice(item: { price: number; discount?: number }): number {
 		return item.discount ? Math.round(item.price * item.discount) : item.price;
 	}
 
@@ -228,17 +228,17 @@
 		return lang === 'zh' ? `${pct}折` : `${Math.round((1 - item.discount) * 100)}% OFF`;
 	}
 
-	function handleAdd(e: CustomEvent<{ item: MenuItem; quantity: number; specialInstructions: string }>) {
+	function handleAdd(e: CustomEvent<{ item: { id: string; name: LocalizedText; price: number; discount?: number }; quantity: number; specialInstructions: string }>) {
 		const { item, quantity, specialInstructions } = e.detail;
 		cart.addItem($roomNumber ?? '000', {
 			source: 'dining',
 			itemId: item.id,
-			name: item.name[lang],
+			name: localize(item.name, lang),
 			price: salePrice(item),
 			quantity,
 			specialInstructions
 		});
-		showToast(`${item.name[lang]} ${lang === 'zh' ? '已加入购物车' : 'added to cart'}`);
+		showToast(`${localize(item.name, lang)} ${lang === 'zh' ? '已加入购物车' : lang === 'id' ? 'ditambahkan ke keranjang' : 'added to cart'}`);
 	}
 
 	function showToast(msg: string) {
@@ -248,7 +248,8 @@
 
 	const T = {
 		en: { title: 'In-Room Dining', sub: 'Local favourites & international classics · delivered to your door.' },
-		zh: { title: '客房送餐', sub: '本地经典 & 国际美味 · 直送您的房间。' }
+		zh: { title: '客房送餐', sub: '本地经典 & 国际美味 · 直送您的房间。' },
+		id: { title: 'Santapan di Kamar', sub: 'Hidangan lokal dan internasional · diantar ke kamar Anda.' }
 	};
 	$: t = T[lang];
 </script>
@@ -264,7 +265,7 @@
 		<div class="cat-tabs">
 			{#each CATS as cat}
 				<button class="chip" class:on={activeCat === cat} on:click={() => activeCat = cat}>
-					{CAT_LABELS[cat][lang]}
+					{localize(CAT_LABELS[cat], lang)}
 				</button>
 			{/each}
 		</div>
@@ -279,7 +280,7 @@
 				</span>
 				<span>
 					{lang === 'zh' ? '筛选：' : 'Filtered: '}
-					<strong>{TAG_LABELS[activeTag][lang]}</strong>
+					<strong>{localize(TAG_LABELS[activeTag], lang)}</strong>
 				</span>
 				<button class="tag-clear" on:click={clearTagFilter} aria-label="Clear filter">
 					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -301,7 +302,7 @@
 								{lang === 'zh' ? '为您推荐' : 'Recommended for you'}
 							</span>
 							{#if item.promo}
-								<span class="featured-promo-badge">{item.promo.badge[lang]}</span>
+								<span class="featured-promo-badge">{localize(item.promo.badge, lang)}</span>
 							{/if}
 							{#if item.discount}
 								<span class="featured-discount-badge">{discountLabel(item)}</span>
@@ -316,19 +317,19 @@
 										src={item.imageUrl}
 										alt={item.name.en}
 										loading="lazy"
-										on:error={(e) => { e.currentTarget.style.display = 'none'; }}
+										on:error={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
 									/>
 								{/if}
 							</div>
 							<div class="featured-info">
-								<p class="featured-name">{item.name[lang]}</p>
+								<p class="featured-name">{localize(item.name, lang)}</p>
 								{#if lang === 'en' && item.name.zh}
 									<span class="featured-cn">{item.name.zh}</span>
 								{/if}
 								{#if item.promo}
-									<p class="featured-tagline">{item.promo.tagline[lang]}</p>
+									<p class="featured-tagline">{localize(item.promo.tagline, lang)}</p>
 								{/if}
-								<p class="featured-desc">{item.desc[lang]}</p>
+								<p class="featured-desc">{localize(item.desc, lang)}</p>
 								<div class="featured-footer">
 									<div class="featured-price-block">
 										<span class="featured-price">{fmtIDR(salePrice(item))}</span>
@@ -351,8 +352,8 @@
 					<div class="menu-item" class:has-promo={!!item.promo}>
 						{#if item.promo}
 							<div class="promo-bar">
-								<span class="promo-badge">{item.promo.badge[lang]}</span>
-								<span class="promo-tagline">{item.promo.tagline[lang]}</span>
+								<span class="promo-badge">{localize(item.promo.badge, lang)}</span>
+								<span class="promo-tagline">{localize(item.promo.tagline, lang)}</span>
 							</div>
 						{/if}
 
@@ -363,7 +364,7 @@
 										src={item.imageUrl}
 										alt={item.name.en}
 										loading="lazy"
-										on:error={(e) => { e.currentTarget.style.display = 'none'; }}
+										on:error={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
 									/>
 								{:else}
 									<span>{item.name.en}</span>
@@ -371,12 +372,12 @@
 							</div>
 							<div class="info">
 								<p class="name">
-									{item.name[lang]}
+									{localize(item.name, lang)}
 									{#if lang === 'en' && item.name.zh}
 										<span class="cn">{item.name.zh}</span>
 									{/if}
 								</p>
-								<p class="desc">{item.desc[lang]}</p>
+								<p class="desc">{localize(item.desc, lang)}</p>
 								<div class="pricerow">
 									<div class="price-block">
 										<span class="price">{fmtIDR(salePrice(item))}</span>

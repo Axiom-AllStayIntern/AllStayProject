@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
 	import { formatPrice } from '$lib/utils/format.js';
 
 	interface ExploreItem {
@@ -10,8 +10,8 @@
 		cover: string;
 		imageUrl: string;
 		full?: boolean;
-		name: { en: string; zh: string };
-		description: { en: string; zh: string };
+		name: LocalizedText;
+		description: LocalizedText;
 		price: number;
 		duration: string;
 	}
@@ -131,11 +131,11 @@
 			on:keydown={(e) => e.key === 'Enter' && openSheet(item)}
 		>
 			<div class="cover">
-				<img src={item.imageUrl} alt={item.name.en} loading="lazy" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
+				<img src={item.imageUrl} alt={item.name.en} loading="lazy" on:error={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
 			</div>
 			<div class="body">
-				<div class="name">{item.name[$language]}</div>
-				<div class="desc">{item.description[$language]}</div>
+				<div class="name">{localize(item.name, $language)}</div>
+				<div class="desc">{localize(item.description, $language)}</div>
 				<div class="pricerow">
 					<div>
 						<div class="price">{formatPrice(item.price)}<span class="unit">/person</span></div>
@@ -168,8 +168,8 @@
 			<div class="big-thumb">
 				<img src={sheetItem.imageUrl} alt={sheetItem.name.en} />
 			</div>
-			<h3>{sheetItem.name[$language]}</h3>
-			<p class="sheet-desc">{sheetItem.description[$language]} · <strong>Duration: {sheetItem.duration}</strong></p>
+			<h3>{localize(sheetItem.name, $language)}</h3>
+			<p class="sheet-desc">{localize(sheetItem.description, $language)} · <strong>Duration: {sheetItem.duration}</strong></p>
 
 			<div class="field-block">
 				<span class="lbl">Pickup date</span>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize } from '$lib/stores/language.js';
 	import { formatPrice } from '$lib/utils/format.js';
 	import type { PageData } from './$types';
 
@@ -70,7 +70,7 @@
 		<div class="venue-card">
 			<div class="cover">
 				{#if v.imageUrl}
-					<img src={v.imageUrl} alt={v.name.en} loading="lazy" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
+					<img src={v.imageUrl} alt={v.name.en} loading="lazy" on:error={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
 				{/if}
 				<div class="badges">
 					{#if v.isOpen}
@@ -81,9 +81,9 @@
 				</div>
 			</div>
 			<div class="body">
-				<div class="cuisine">{v.cuisine[$language]}</div>
+				<div class="cuisine">{localize(v.cuisine, $language)}</div>
 				<div class="vname">
-					{v.name[$language]}
+					{localize(v.name, $language)}
 					{#if $language === 'en'}<span class="cn">{v.name.zh}</span>{/if}
 				</div>
 				<div class="vmeta">
@@ -92,7 +92,7 @@
 						{v.openHours}
 					</span>
 				</div>
-				<p class="vdesc">{v.description[$language]}</p>
+				<p class="vdesc">{localize(v.description, $language)}</p>
 				<div class="actions">
 					<button class="btn-ghost">View menu</button>
 					<button class="btn-add" on:click={() => openSheet(v)} disabled={!v.isOpen}>Reserve</button>

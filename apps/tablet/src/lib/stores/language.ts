@@ -3,6 +3,17 @@ import { locale } from 'svelte-i18n';
 
 export type Language = 'en' | 'zh' | 'id';
 
+export type LocalizedText = {
+	en: string;
+	zh: string;
+	id?: string;
+};
+
+/** Return the requested translation, falling back to English while UI copy is being translated. */
+export function localize(value: LocalizedText, lang: Language): string {
+	return value[lang] ?? value.en;
+}
+
 function createLanguageStore() {
 	const { subscribe, set } = writable<Language>('en');
 
