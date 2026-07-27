@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@allstay/shared": "file:../shared",
+    "@hono/node-server": "2.0.12",
     "@modelcontextprotocol/sdk": "^1.17.0",
     "express": "^4.19.0",
     "zod": "^3.23.0"
