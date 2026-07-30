@@ -58,7 +58,8 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	}
 
 	if (!res.ok) {
-		return { success: false, error: `HTTP ${res.status} from ${new URL(url).host}` };
+		const target = new URL(url);
+		return { success: false, error: `HTTP ${res.status} from ${target.host}${target.pathname}` };
 	}
 
 	// StreamableHTTPServerTransport may answer as JSON or as an SSE stream

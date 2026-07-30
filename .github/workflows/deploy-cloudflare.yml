@@ -59,6 +59,30 @@ jobs:
           workingDirectory: apps/spa-worker
           command: d1 migrations apply allstay-spa --remote --config wrangler.jsonc
 
+      - name: Smoke test Spa tool bridge
+        shell: bash
+        env:
+          SPA_MCP_SHARED_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}
+        run: |
+          payload='{"jsonrpc":"2.0","id":"spa-deploy-smoke","method":"tools/call","params":{"name":"list_spa_services","arguments":{}}}'
+
+          if ! curl --fail-with-body --silent --show-error \
+            --retry 10 --retry-all-errors --retry-delay 2 \
+            --header "Authorization: Bearer ${SPA_MCP_SHARED_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --header "Accept: application/json, text/event-stream" \
+            --data "${payload}" \
+            "https://allstay-spa-mcp.wangchang0409.workers.dev/api/mcp" \
+            --output /tmp/allstay-spa-worker-response.txt; then
+            cat /tmp/allstay-spa-worker-response.txt
+            exit 1
+          fi
+
+          grep -q 'balinese-massage' /tmp/allstay-spa-worker-response.txt || {
+            cat /tmp/allstay-spa-worker-response.txt
+            exit 1
+          }
+
       - name: Build tablet app
         run: npm run build --workspace=apps/tablet
 
@@ -105,6 +129,7 @@ jobs:
             "${tablet_url}/login" > /dev/null
 
           if ! curl --fail-with-body --silent --show-error \
+            --retry 10 --retry-all-errors --retry-delay 2 \
             --cookie /tmp/allstay-tablet.cookies \
             "${tablet_url}/api/spa?serviceId=balinese-massage&date=2026-08-01" \
             --output /tmp/allstay-spa-response.txt; then

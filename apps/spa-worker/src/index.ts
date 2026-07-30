@@ -291,7 +291,7 @@ export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		if (url.pathname === '/health' && request.method === 'GET') {
-			return Response.json({ status: 'ok', service: 'spa', storage: 'd1' });
+			return Response.json({ status: 'ok', service: 'spa', storage: 'd1', revision: 'tool-bridge-v2' });
 		}
 
 		if (url.pathname !== '/mcp' && url.pathname !== '/api/mcp') {
@@ -299,6 +299,16 @@ export default {
 		}
 		if (!(await isAuthorized(request, env))) return new Response('Unauthorized', { status: 401 });
 		if (url.pathname === '/api/mcp') return handleTabletToolCall(request, env);
+
+		// Tablet deployments that still target the native path must not be
+		// coupled to the SDK transport. Standard MCP initialization and discovery
+		// requests continue to the SDK handler below.
+		try {
+			const rpc = (await request.clone().json()) as { method?: string };
+			if (rpc.method === 'tools/call') return handleTabletToolCall(request, env);
+		} catch {
+			// Let the SDK return the protocol-level parse error.
+		}
 
 		const handler = createMcpHandler(() => createServer(env), {
 			responseMode: 'json',
