@@ -42,6 +42,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.115.0"
           workingDirectory: apps/spa-worker
           command: deploy --config wrangler.jsonc --keep-vars
           secrets: |
@@ -54,6 +55,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.115.0"
           workingDirectory: apps/spa-worker
           command: d1 migrations apply allstay-spa --remote --config wrangler.jsonc
 
@@ -81,6 +83,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.115.0"
           workingDirectory: apps/tablet
           command: deploy --config wrangler.jsonc --keep-vars
           secrets: |
