@@ -231,10 +231,15 @@ export default {
 		if (!(await isAuthorized(request, env))) return new Response('Unauthorized', { status: 401 });
 
 		const handler = createMcpHandler(() => createServer(env), {
-			route: '/api/mcp',
 			responseMode: 'json',
 			corsOptions: false
 		});
-		return handler(request, env, ctx);
+
+		// The Agents SDK handler defaults to `/mcp`. Keep AllStay's public
+		// `/api/mcp` contract, but normalize the internal transport URL so the
+		// deployed bundle does not depend on custom-route option handling.
+		const transportUrl = new URL(request.url);
+		transportUrl.pathname = '/mcp';
+		return handler(new Request(transportUrl, request), env, ctx);
 	}
 } satisfies ExportedHandler<Env>;
