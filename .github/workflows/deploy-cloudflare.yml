@@ -104,7 +104,15 @@ jobs:
             --data "pin=1234" \
             "${tablet_url}/login" > /dev/null
 
-          curl --fail --silent --show-error \
+          if ! curl --fail-with-body --silent --show-error \
             --cookie /tmp/allstay-tablet.cookies \
             "${tablet_url}/api/spa?serviceId=balinese-massage&date=2026-08-01" \
-            | grep -q '"slots"'
+            --output /tmp/allstay-spa-response.txt; then
+            cat /tmp/allstay-spa-response.txt
+            exit 1
+          fi
+
+          grep -q '"slots"' /tmp/allstay-spa-response.txt || {
+            cat /tmp/allstay-spa-response.txt
+            exit 1
+          }
