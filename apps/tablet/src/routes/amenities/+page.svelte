@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { _ } from 'svelte-i18n';
 	export let data: PageData;
 </script>
 
 <div class="amenities">
-	<h1 class="page-title">Hotel Amenities</h1>
+	<h1 class="page-title">{$_('amenities.title')}</h1>
 	<div class="grid">
 		{#each data.amenities as a}
 			<div class="card">

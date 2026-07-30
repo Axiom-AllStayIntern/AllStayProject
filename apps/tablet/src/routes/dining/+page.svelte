@@ -5,6 +5,7 @@
 	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
 	import { cart } from '$lib/stores/cart.js';
 	import { roomNumber } from '$lib/stores/room.js';
+	import { _ } from 'svelte-i18n';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
@@ -238,7 +239,7 @@
 			quantity,
 			specialInstructions
 		});
-		showToast(`${localize(item.name, lang)} ${lang === 'zh' ? '已加入购物车' : lang === 'id' ? 'ditambahkan ke keranjang' : 'added to cart'}`);
+		showToast($_('dining.added', { values: { item: localize(item.name, lang) } }));
 	}
 
 	function showToast(msg: string) {
@@ -246,20 +247,14 @@
 		setTimeout(() => { toastVisible = false; }, 2500);
 	}
 
-	const T = {
-		en: { title: 'In-Room Dining', sub: 'Local favourites & international classics · delivered to your door.' },
-		zh: { title: '客房送餐', sub: '本地经典 & 国际美味 · 直送您的房间。' },
-		id: { title: 'Santapan di Kamar', sub: 'Hidangan lokal dan internasional · diantar ke kamar Anda.' }
-	};
-	$: t = T[lang];
 </script>
 
 <div class="shell">
 	<Header />
 	<main class="main scroll page-enter">
 		<div class="dining-hero">
-			<h2>{t.title}</h2>
-			<p>{t.sub}</p>
+			<h2>{$_('dining.title')}</h2>
+			<p>{$_('dining.subtitle')}</p>
 		</div>
 
 		<div class="cat-tabs">
@@ -279,10 +274,10 @@
 					</svg>
 				</span>
 				<span>
-					{lang === 'zh' ? '筛选：' : 'Filtered: '}
+					{$_('dining.filtered')}
 					<strong>{localize(TAG_LABELS[activeTag], lang)}</strong>
 				</span>
-				<button class="tag-clear" on:click={clearTagFilter} aria-label="Clear filter">
+				<button class="tag-clear" on:click={clearTagFilter} aria-label={$_('common.clearFilter')}>
 					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
 						<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
 					</svg>
@@ -299,7 +294,7 @@
 						<div class="featured-badges">
 							<span class="featured-rec-badge">
 								<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-								{lang === 'zh' ? '为您推荐' : 'Recommended for you'}
+								{$_('dining.recommended')}
 							</span>
 							{#if item.promo}
 								<span class="featured-promo-badge">{localize(item.promo.badge, lang)}</span>
@@ -341,7 +336,7 @@
 										<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
 											<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
 										</svg>
-										{lang === 'zh' ? '加入购物车' : 'Add to Cart'}
+										{$_('dining.addToCart')}
 									</button>
 								</div>
 							</div>
@@ -390,7 +385,7 @@
 										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
 											<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
 										</svg>
-										{lang === 'zh' ? '加入购物车' : 'Add to Cart'}
+										{$_('dining.addToCart')}
 									</button>
 								</div>
 							</div>
@@ -401,7 +396,7 @@
 
 			{#if filtered.length === 0}
 				<p class="empty">
-					{lang === 'zh' ? '暂无相关菜品' : 'No items match this filter.'}
+					{$_('dining.noItems')}
 				</p>
 			{/if}
 		</div>
@@ -515,7 +510,7 @@
 	}
 	.featured-desc {
 		margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.45;
-		display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+		display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 	}
 	.featured-footer {
 		display: flex; align-items: center; justify-content: space-between;
@@ -571,7 +566,7 @@
 	.cn { font-weight: 500; color: var(--ink-2); font-size: 13px; display: block; margin-top: 2px; }
 	.desc {
 		margin: 4px 0 8px; font-size: 12.5px; color: var(--ink-3); line-height: 1.45;
-		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+		display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	}
 	.pricerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 	.price { font: 600 15px/1 var(--font-ui); color: var(--navy-800); }

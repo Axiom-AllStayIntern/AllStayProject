@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { language, localize, type Language, type LocalizedText } from '$lib/stores/language.js';
+	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
+	import { _ } from 'svelte-i18n';
 
 	type SheetItem = {
 		id: string;
@@ -34,9 +35,6 @@
 		dispatch('close');
 	}
 
-	const PH: Record<Language, string> = { en: 'Special instructions...', zh: '特殊说明…', id: 'Instruksi khusus...' };
-	const QTY_LBL: Record<Language, string> = { en: 'Quantity', zh: '数量', id: 'Jumlah' };
-	const ADD_LBL: Record<Language, string> = { en: 'Add to Cart', zh: '加入购物车', id: 'Tambah ke Keranjang' };
 </script>
 
 {#if open && item}
@@ -57,7 +55,7 @@
 
 			<!-- Quantity row -->
 			<div class="qty-row">
-				<span class="lbl">{QTY_LBL[lang]}</span>
+				<span class="lbl">{$_('dining.quantity')}</span>
 				<div class="qty">
 					<button disabled={quantity <= 1} on:click={() => quantity--}>−</button>
 					<span class="num">{quantity}</span>
@@ -68,7 +66,7 @@
 			<!-- Special instructions -->
 			<textarea
 				class="instructions"
-				placeholder={PH[lang]}
+				placeholder={$_('dining.specialInstructions')}
 				bind:value={specialInstructions}
 				rows="2"
 			></textarea>
@@ -77,7 +75,7 @@
 			<div class="sheet-cta">
 				<span class="total-prev">{fmtIDR(item.price * quantity)}</span>
 				<button class="btn btn-primary" on:click={handleAdd}>
-					{ADD_LBL[lang]}
+					{$_('dining.addToCart')}
 				</button>
 			</div>
 		</div>

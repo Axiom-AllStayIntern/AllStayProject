@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { cartItemCount } from '$lib/stores/cart.js';
+	import { _ } from 'svelte-i18n';
 </script>
 
-<button class="cart-icon" on:click={() => goto('/cart')} aria-label="Shopping cart">
+<button class="cart-icon" on:click={() => goto('/cart')} aria-label={$_('header.cart')}>
 	<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 		<circle cx="9" cy="21" r="1" />
 		<circle cx="20" cy="21" r="1" />

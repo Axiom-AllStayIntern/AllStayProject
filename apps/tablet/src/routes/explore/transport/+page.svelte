@@ -3,6 +3,7 @@
 	import DateTimePicker from '$lib/components/DateTimePicker.svelte';
 	import type { TransportOption } from '$types/transport.js';
 	import type { PageData } from './$types';
+	import { _ } from 'svelte-i18n';
 
 	export let data: PageData;
 
@@ -13,14 +14,14 @@
 </script>
 
 <div class="transport">
-	<h1 class="page-title">Transport</h1>
+	<h1 class="page-title">{$_('transport.title')}</h1>
 	<div class="options">
 		{#each data.options as opt}
 			<button class="option-card" on:click={() => selected = opt}>
 				<div class="option-card__info">
 					<p class="option-card__name">{opt.name}</p>
 					<p class="option-card__desc">{opt.description}</p>
-					<p class="option-card__capacity">Up to {opt.capacity} passengers</p>
+					<p class="option-card__capacity">{$_('transport.capacity', { values: { count: opt.capacity } })}</p>
 				</div>
 				<p class="option-card__price">{formatPrice(opt.price)}</p>
 			</button>

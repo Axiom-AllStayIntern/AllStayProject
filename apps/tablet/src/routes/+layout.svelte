@@ -14,6 +14,7 @@
 	import { onMount } from 'svelte';
 	import { setupI18n } from '$lib/i18n/index.js';
 	import type { AIResponse } from '$lib/services/ai-conversation.js';
+	import { _ } from 'svelte-i18n';
 
 	setupI18n();
 
@@ -21,6 +22,7 @@
 	$: isStandalone = STANDALONE.some((p) => $page.url.pathname.startsWith(p));
 
 	onMount(() => {
+		void language.initialize();
 		if (!isStandalone) idle.start();
 		return () => idle.stop();
 	});
@@ -92,7 +94,7 @@
 	{#each $toasts as toast (toast.id)}
 		<div class="toast toast--{toast.type}" role="status">
 			{toast.message}
-			<button class="toast-close" on:click={() => toasts.removeToast(toast.id)} aria-label="Dismiss">✕</button>
+			<button class="toast-close" on:click={() => toasts.removeToast(toast.id)} aria-label={$_('voice.dismiss')}>✕</button>
 		</div>
 	{/each}
 </div>

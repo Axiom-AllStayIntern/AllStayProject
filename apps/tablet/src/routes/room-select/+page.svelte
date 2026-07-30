@@ -2,28 +2,10 @@
 	import { enhance } from '$app/forms';
 	import { room } from '$lib/stores/room.js';
 	import { goto } from '$app/navigation';
-	import type { ActionData } from './$types';
+	import { language } from '$lib/stores/language.js';
+	import { _ } from 'svelte-i18n';
 
-	export let form: ActionData;
-
-	let lang: 'en' | 'zh' = 'en';
 	let digits = '';
-
-	const T = {
-		en: {
-			title: 'Welcome! Please enter your room number',
-			sub: "We'll personalise the experience for your stay.",
-			label: 'Room Number', confirm: 'Confirm',
-			hint: 'Your room number can be found on your key card.'
-		},
-		zh: {
-			title: '欢迎！请输入您的房间号',
-			sub: '我们将为您定制专属体验。',
-			label: '房间号', confirm: '确认',
-			hint: '房间号可在您的房卡上找到。'
-		}
-	} as const;
-	$: t = T[lang];
 
 	function press(key: string) {
 		if (key === 'del') { digits = digits.slice(0, -1); return; }
@@ -50,7 +32,7 @@
 <div class="screen-wrap">
 	<div class="statusbar">
 		<span>{time}</span>
-		<div class="right"><span>Hotel Wi-Fi</span><span class="dot"></span><span>100%</span></div>
+		<div class="right"><span>{$_('header.wifi')}</span><span class="dot"></span><span>100%</span></div>
 	</div>
 
 	<div class="roompage page-enter">
@@ -63,17 +45,18 @@
 				</div>
 			</div>
 			<div class="langtoggle lite" role="tablist">
-				<button class:on={lang === 'en'} on:click={() => lang = 'en'}>EN</button>
-				<button class:on={lang === 'zh'} on:click={() => lang = 'zh'}>中文</button>
+				<button class:on={$language === 'en'} on:click={() => language.set('en')}>EN</button>
+				<button class:on={$language === 'zh'} on:click={() => language.set('zh')}>中文</button>
+				<button class:on={$language === 'id'} on:click={() => language.set('id')}>ID</button>
 			</div>
 		</div>
 
-		<h2>{t.title}</h2>
-		<p class="sub">{t.sub}</p>
+		<h2>{$_('roomSelect.title')}</h2>
+		<p class="sub">{$_('roomSelect.subtitle')}</p>
 
 		<!-- Room number display -->
 		<div class="room-display">
-			<div class="display-label">{t.label}</div>
+			<div class="display-label">{$_('roomSelect.label')}</div>
 			<div class="digits">
 				{#each slots as slot, i}
 					{#if slot !== null}
@@ -92,14 +75,14 @@
 			{#each ['1','2','3','4','5','6','7','8','9'] as k}
 				<button class="key" on:click={() => press(k)}>{k}</button>
 			{/each}
-			<button class="key action" on:click={() => press('del')} aria-label="Delete">
+			<button class="key action" on:click={() => press('del')} aria-label={$_('roomSelect.delete')}>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M21 5H8l-5 7 5 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/>
 					<line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
 				</svg>
 			</button>
 			<button class="key" on:click={() => press('0')}>0</button>
-			<button class="key confirm" on:click={() => press('ok')} disabled={!canConfirm}>{t.confirm}</button>
+			<button class="key confirm" on:click={() => press('ok')} disabled={!canConfirm}>{$_('roomSelect.confirm')}</button>
 		</div>
 
 		<!-- Hint -->
@@ -110,7 +93,7 @@
 				<line x1="13" y1="11" x2="19" y2="11"/>
 				<line x1="13" y1="14" x2="17" y2="14"/>
 			</svg>
-			<span>{t.hint}</span>
+			<span>{$_('roomSelect.hint')}</span>
 		</div>
 	</div>
 

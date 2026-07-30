@@ -3,6 +3,7 @@
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { language, localize, type LocalizedText } from '$lib/stores/language.js';
 	import { formatPrice } from '$lib/utils/format.js';
+	import { _ } from 'svelte-i18n';
 
 	interface ExploreItem {
 		id: string;
@@ -114,9 +115,9 @@
 
 <!-- ── Page content ─────────────────────────────────────────── -->
 <div class="page-hero">
-	<div class="eyebrow">Curated by the Concierge</div>
-	<h2>Explore Bali</h2>
-	<p>Tours, transfers, and hidden gems · arranged door-to-door by your butler.</p>
+	<div class="eyebrow">{$_('explore.eyebrow')}</div>
+	<h2>{$_('explore.title')}</h2>
+	<p>{$_('explore.subtitle')}</p>
 </div>
 
 <div class="explore-list">
@@ -138,8 +139,8 @@
 				<div class="desc">{localize(item.description, $language)}</div>
 				<div class="pricerow">
 					<div>
-						<div class="price">{formatPrice(item.price)}<span class="unit">/person</span></div>
-						<div class="dur">Duration: {item.duration}</div>
+						<div class="price">{formatPrice(item.price)}<span class="unit">{$_('explore.perPerson')}</span></div>
+						<div class="dur">{$_('explore.duration', { values: { duration: item.duration } })}</div>
 					</div>
 					<div class="arrow">
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -169,18 +170,18 @@
 				<img src={sheetItem.imageUrl} alt={sheetItem.name.en} />
 			</div>
 			<h3>{localize(sheetItem.name, $language)}</h3>
-			<p class="sheet-desc">{localize(sheetItem.description, $language)} · <strong>Duration: {sheetItem.duration}</strong></p>
+			<p class="sheet-desc">{localize(sheetItem.description, $language)} · <strong>{$_('explore.duration', { values: { duration: sheetItem.duration } })}</strong></p>
 
 			<div class="field-block">
-				<span class="lbl">Pickup date</span>
+				<span class="lbl">{$_('explore.pickupDate')}</span>
 				<div class="seg">
-					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>Today</button>
-					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>Tomorrow</button>
+					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>{$_('explore.today')}</button>
+					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>{$_('explore.tomorrow')}</button>
 				</div>
 			</div>
 
 			<div class="field-block">
-				<span class="lbl">Pickup time</span>
+				<span class="lbl">{$_('explore.pickupTime')}</span>
 				<div class="slot-grid">
 					{#each PICKUP_TIMES as slot}
 						<button
@@ -193,7 +194,7 @@
 			</div>
 
 			<div class="qty-row">
-				<span class="lbl">Participants</span>
+				<span class="lbl">{$_('explore.participants')}</span>
 				<div class="qty">
 					<button on:click={() => sheetPax = Math.max(1, sheetPax - 1)} disabled={sheetPax <= 1}>−</button>
 					<span class="num">{sheetPax}</span>
@@ -201,12 +202,12 @@
 				</div>
 			</div>
 
-			<textarea class="instructions" bind:value={sheetNote} placeholder="Special instructions..."></textarea>
+			<textarea class="instructions" bind:value={sheetNote} placeholder={$_('explore.instructions')}></textarea>
 
 			<div class="sheet-cta">
 				<div class="total-prev">{formatPrice(sheetItem.price * sheetPax)}</div>
 				<button class="btn btn-primary" on:click={submitRequest} disabled={!sheetTime}>
-					Request
+					{$_('explore.request')}
 				</button>
 			</div>
 		</div>
@@ -276,7 +277,7 @@
 	.desc {
 		font-size: 12px; color: var(--ink-3); line-height: 1.4;
 		flex: 1; margin-bottom: 8px;
-		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+		display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	}
 	.pricerow { display: flex; align-items: center; justify-content: space-between; }
 	.price { font: 600 13px/1 var(--font-ui); color: var(--navy-800); }

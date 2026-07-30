@@ -6,6 +6,8 @@
 	<span class:active={$language === 'en'}>EN</span>
 	<span class="divider">/</span>
 	<span class:active={$language === 'zh'}>中</span>
+	<span class="divider">/</span>
+	<span class:active={$language === 'id'}>ID</span>
 </button>
 
 <style>

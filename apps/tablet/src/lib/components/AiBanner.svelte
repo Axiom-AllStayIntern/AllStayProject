@@ -2,6 +2,7 @@
 	import { voiceReply } from '$lib/stores/voice-reply.js';
 	import { page } from '$app/stores';
 	import { onDestroy } from 'svelte';
+	import { _ } from 'svelte-i18n';
 
 	let autoDismiss: ReturnType<typeof setTimeout>;
 
@@ -22,7 +23,7 @@
 	<div class="ai-banner" role="status">
 		<div class="avatar">Ari</div>
 		<p class="msg">{$voiceReply.message}</p>
-		<button class="close" on:click={() => voiceReply.clear()} aria-label="Dismiss">✕</button>
+		<button class="close" on:click={() => voiceReply.clear()} aria-label={$_('voice.dismiss')}>✕</button>
 	</div>
 {/if}
 

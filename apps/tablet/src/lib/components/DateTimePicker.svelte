@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { _ } from 'svelte-i18n';
 	export let date = '';
 	export let time = '';
 	export let minDate = new Date().toISOString().split('T')[0];
@@ -9,8 +10,9 @@
 
 <div class="picker">
 	<div class="picker__group">
-		<label class="picker__label">Date</label>
+		<label class="picker__label" for="booking-date">{$_('common.date')}</label>
 		<input
+			id="booking-date"
 			type="date"
 			class="picker__input"
 			bind:value={date}
@@ -18,7 +20,7 @@
 		/>
 	</div>
 	<div class="picker__group">
-		<label class="picker__label">Time</label>
+		<div class="picker__label">{$_('common.time')}</div>
 		<div class="time-grid">
 			{#each TIME_SLOTS as slot}
 				<button

@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { language } from '$lib/stores/language.js';
 	import type { PageData } from './$types';
+	import { _ } from 'svelte-i18n';
 
 	export let data: PageData;
-
-	$: lang = $language;
 
 	function fmtIDR(n: number) {
 		return n ? n.toLocaleString('en-US').replace(/,/g, ' ') + ' IDR' : '—';
@@ -17,24 +15,6 @@
 
 	const eta = '25–35 min';
 
-	const T = {
-		en: {
-			title: 'Order Confirmed!',
-			sub: "We've sent your order to the kitchen. You'll receive a notification when it's on its way.",
-			orderNo: 'Order No.', deliveryTo: 'Delivery to',
-			roomLabel: 'Room', eta: 'Estimated arrival',
-			totalLabel: 'Total', returnHome: 'Return to Home'
-		},
-		zh: {
-			title: '订单已确认！',
-			sub: '订单已送达厨房，出餐时您将收到通知。',
-			orderNo: '订单号', deliveryTo: '送至',
-			roomLabel: '房间', eta: '预计送达',
-			totalLabel: '总计', returnHome: '返回首页'
-		}
-	} as const;
-	$: t = T[lang as keyof typeof T] ?? T.en;
-
 	function handleReturn() {
 		goto('/home');
 	}
@@ -43,7 +23,7 @@
 <div class="screen-wrap">
 	<div class="statusbar">
 		<span></span>
-		<div class="right"><span>Hotel Wi-Fi</span><span class="dot"></span><span>100%</span></div>
+		<div class="right"><span>{$_('header.wifi')}</span><span class="dot"></span><span>100%</span></div>
 	</div>
 
 	<div class="confirm-page page-enter">
@@ -53,30 +33,30 @@
 			</svg>
 		</div>
 
-		<h1>{t.title}</h1>
-		<p class="lead">{t.sub}</p>
+		<h1>{$_('confirmation.title')}</h1>
+		<p class="lead">{$_('confirmation.subtitle')}</p>
 
 		<div class="order-card">
 			<div class="o-row">
-				<span class="lbl">{t.orderNo}</span>
+				<span class="lbl">{$_('confirmation.orderNo')}</span>
 				<span class="val mono">{data.orderId || `ALL-${Date.now().toString().slice(-6)}`}</span>
 			</div>
 			<div class="o-row">
-				<span class="lbl">{t.deliveryTo}</span>
-				<span class="val">{t.roomLabel} {room}</span>
+				<span class="lbl">{$_('confirmation.deliveryTo')}</span>
+				<span class="val">{$_('confirmation.room')} {room}</span>
 			</div>
 			<div class="o-row">
-				<span class="lbl">{t.eta}</span>
+				<span class="lbl">{$_('confirmation.eta')}</span>
 				<span class="val">{eta}</span>
 			</div>
 			<div class="o-row tot">
-				<span class="lbl">{t.totalLabel}</span>
+				<span class="lbl">{$_('confirmation.total')}</span>
 				<span class="val">{fmtIDR(total)}</span>
 			</div>
 		</div>
 
 		<button class="btn btn-primary" style="min-width:280px;" on:click={handleReturn}>
-			{t.returnHome}
+			{$_('confirmation.returnHome')}
 		</button>
 	</div>
 

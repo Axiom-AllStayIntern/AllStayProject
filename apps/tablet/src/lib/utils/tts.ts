@@ -7,6 +7,10 @@
 // the first sentence. stopSpeaking() clears the queue + aborts the current clip
 // (used for barge-in / session end).
 
+import { get } from 'svelte/store';
+import { LANGUAGE_CONFIG } from '$lib/i18n/config.js';
+import { language } from '$lib/stores/language.js';
+
 let currentAudio:  HTMLAudioElement | null = null;
 let abortPlayback: (() => void) | null = null;
 let fetchAbort:    AbortController | null = null;
@@ -143,6 +147,7 @@ function fallbackSpeak(text: string, onDone: () => void) {
 	window.speechSynthesis.cancel();
 	const utt     = new SpeechSynthesisUtterance(text);
 	utt.rate      = 1.0;
+	utt.lang      = LANGUAGE_CONFIG[get(language)].speechLocale;
 	utt.onend     = () => { abortPlayback = null; onDone(); };
 	utt.onerror   = () => { abortPlayback = null; onDone(); };
 	abortPlayback = () => { window.speechSynthesis.cancel(); onDone(); };

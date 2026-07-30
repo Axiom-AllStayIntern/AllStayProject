@@ -4,61 +4,15 @@
 	import { roomNumber } from '$lib/stores/room.js';
 	import { language } from '$lib/stores/language.js';
 	import { goto } from '$app/navigation';
-
-	const T = {
-		en: {
-			howCanWe: 'How can we help today?', services: 'Services',
-			dining: 'In-Room Dining', diningDesc: '24/7 menu · 20–40 min',
-			spa: 'Spa & Wellness', spaDesc: 'Treatments · 9:00–22:00',
-			restaurants: 'Hotel Restaurants', restaurantsDesc: '3 venues · Reserve a table',
-			amenities: 'Amenities', amenitiesDesc: 'Pool, gym, laundry & more',
-			explore: 'Explore Bali', exploreDesc: 'Tours, transport & tips',
-			cart: 'My Cart', cartEmptyLine: 'No items yet',
-			conciergeTitle: 'Need anything? Concierge is one tap away.',
-			conciergeSub: 'Ari, your butler today · responds in < 2 minutes',
-			chat: 'Chat',
-			greetMorning: 'Good Morning', greetAfternoon: 'Good Afternoon', greetEvening: 'Good Evening',
-			guest: 'Guest', weather: 'Sunny · 29°C', checkout: 'Check-out 12:00'
-		},
-		zh: {
-			howCanWe: '今天我们能为您做些什么？', services: '服务',
-			dining: '客房送餐', diningDesc: '24小时菜单 · 20–40 分钟',
-			spa: '水疗与康体', spaDesc: '理疗 · 9:00–22:00',
-			restaurants: '酒店餐厅', restaurantsDesc: '3 家餐厅 · 预约餐位',
-			amenities: '设施', amenitiesDesc: '泳池、健身房、洗衣等',
-			explore: '探索巴厘', exploreDesc: '行程、用车与攻略',
-			cart: '我的购物车', cartEmptyLine: '购物车暂无商品',
-			conciergeTitle: '需要协助？礼宾随时为您服务。',
-			conciergeSub: '今日管家 Ari · 2 分钟内回复',
-			chat: '对话',
-			greetMorning: '早上好', greetAfternoon: '下午好', greetEvening: '晚上好',
-			guest: '贵宾', weather: '晴 · 29°C', checkout: '退房 12:00'
-		},
-		id: {
-			howCanWe: 'Ada yang bisa kami bantu hari ini?', services: 'Layanan',
-			dining: 'Layanan Kamar', diningDesc: 'Menu 24/7 · 20–40 mnt',
-			spa: 'Spa & Kebugaran', spaDesc: 'Perawatan · 9:00–22:00',
-			restaurants: 'Restoran Hotel', restaurantsDesc: '3 tempat · Pesan meja',
-			amenities: 'Fasilitas', amenitiesDesc: 'Kolam, gym, laundry & lainnya',
-			explore: 'Jelajahi Bali', exploreDesc: 'Tur, transportasi & tips',
-			cart: 'Keranjang Saya', cartEmptyLine: 'Belum ada item',
-			conciergeTitle: 'Butuh sesuatu? Concierge siap membantu.',
-			conciergeSub: 'Ari, kepala pelayan Anda hari ini · membalas < 2 menit',
-			chat: 'Obrolan',
-			greetMorning: 'Selamat Pagi', greetAfternoon: 'Selamat Siang', greetEvening: 'Selamat Malam',
-			guest: 'Tamu', weather: 'Cerah · 29°C', checkout: 'Check-out 12:00'
-		}
-	} as const;
-
-	// Fall back to English for any language without a full home dictionary.
-	$: t = T[$language] ?? T.en;
+	import { _ } from 'svelte-i18n';
+	import { intlLocale } from '$lib/i18n/config.js';
 
 	$: greeting = (() => {
 		const h = new Date().getHours();
-		return h < 12 ? t.greetMorning : h < 18 ? t.greetAfternoon : t.greetEvening;
+		return h < 12 ? $_('home.greetMorning') : h < 18 ? $_('home.greetAfternoon') : $_('home.greetEvening');
 	})();
 
-	$: dateStr = new Date().toLocaleDateString($language === 'zh' ? 'zh-CN' : $language === 'id' ? 'id-ID' : 'en-GB', {
+	$: dateStr = new Date().toLocaleDateString(intlLocale($language), {
 		weekday: 'long', day: 'numeric', month: 'long'
 	});
 
@@ -84,20 +38,20 @@
 		<div class="page-enter">
 			<!-- Greeting -->
 			<div class="welcome-wrap">
-				<h1 class="greeting">{greeting}, <span class="accent">{t.guest}</span></h1>
+			<h1 class="greeting">{greeting}, <span class="accent">{$_('home.guest')}</span></h1>
 				<div class="greeting-meta">
 					<span>{dateStr}</span>
 					<span class="sep"></span>
-					<span>{t.weather}</span>
+				<span>{$_('home.weather')}</span>
 					<span class="sep"></span>
-					<span>{t.checkout}</span>
+				<span>{$_('home.checkout')}</span>
 				</div>
 			</div>
 
 			<!-- Section header -->
 			<div class="section-title">
-				<h3>{t.howCanWe}</h3>
-				<span class="eyebrow">{t.services}</span>
+			<h3>{$_('home.howCanWe')}</h3>
+			<span class="eyebrow">{$_('home.services')}</span>
 			</div>
 
 			<!-- Quick grid -->
@@ -110,8 +64,8 @@
 									{@html card.icon}
 								</svg>
 							</div>
-							<div class="qtitle">{t[card.key]}</div>
-							<div class="qdesc">{t[card.descKey]}</div>
+						<div class="qtitle">{$_(`home.${card.key}`)}</div>
+						<div class="qdesc">{$_(`home.${card.descKey}`)}</div>
 						</div>
 					</button>
 				{/each}
@@ -121,11 +75,11 @@
 			<div class="concierge-banner">
 				<div class="pic">PHOTO</div>
 				<div class="ctxt">
-					<h4>{t.conciergeTitle}</h4>
-					<p>{t.conciergeSub}</p>
+				<h4>{$_('home.conciergeTitle')}</h4>
+				<p>{$_('home.conciergeSub')}</p>
 				</div>
 				<button class="btn btn-primary" style="min-height:44px; padding: 0 18px; font-size: 13px;">
-					{t.chat}
+					{$_('home.chat')}
 				</button>
 			</div>
 		</div>

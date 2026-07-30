@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { _ } from 'svelte-i18n';
 	interface ExternalSpa {
 		id: string;
 		name: string;
@@ -65,8 +66,8 @@
 </script>
 
 <div class="ext-spa">
-	<h1 class="page-title">External Wellness</h1>
-	<p class="page-sub">Off-property spas and wellness experiences recommended by our concierge.</p>
+	<h1 class="page-title">{$_('external.wellnessTitle')}</h1>
+	<p class="page-sub">{$_('external.wellnessSubtitle')}</p>
 
 	<div class="list">
 		{#each spas as spa}
@@ -74,7 +75,7 @@
 				<div class="spa-card__img-wrap">
 					<img src={spa.imageUrl} alt={spa.name} class="spa-card__img" />
 					{#if spa.isRecommended}
-						<span class="recommended-badge">⭐ Concierge Pick</span>
+						<span class="recommended-badge">⭐ {$_('external.conciergePick')}</span>
 					{/if}
 				</div>
 				<div class="spa-card__body">
@@ -100,7 +101,7 @@
 
 	<div class="concierge-note">
 		<span class="concierge-icon">🔔</span>
-		<p>Need transport or a booking? Our concierge can arrange everything, including a hotel car to take you there.</p>
+		<p>{$_('external.wellnessNote')}</p>
 	</div>
 </div>
 
