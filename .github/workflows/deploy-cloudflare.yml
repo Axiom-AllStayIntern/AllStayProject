@@ -38,7 +38,6 @@ jobs:
         run: npm run check --workspace=@allstay/spa-worker
 
       - name: Deploy Spa MCP Worker
-        id: deploy-spa
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -91,5 +90,5 @@ jobs:
             MCP_SPA_URL
             MCP_SPA_API_TOKEN
         env:
-          MCP_SPA_URL: ${{ steps.deploy-spa.outputs.deployment-url }}
+          MCP_SPA_URL: https://allstay-spa-mcp.wangchang0409.workers.dev
           MCP_SPA_API_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}
