@@ -36,6 +36,22 @@ jobs:
       - name: Build tablet app
         run: npm run build --workspace=apps/tablet
 
+      - name: Smoke test tablet SSR
+        shell: bash
+        run: |
+          npm run preview --workspace=apps/tablet -- --host 127.0.0.1 --port 4173 > /tmp/allstay-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error \
+            --retry 15 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:4173/login > /tmp/allstay-login.html
+
+          grep -q "Everything for your trip" /tmp/allstay-login.html || {
+            cat /tmp/allstay-preview.log
+            exit 1
+          }
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
