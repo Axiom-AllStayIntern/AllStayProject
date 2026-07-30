@@ -4,6 +4,9 @@
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-07-27",
 	"compatibility_flags": ["nodejs_compat"],
+	"vars": {
+		"MCP_SPA_PUBLIC_URL": "https://allstay-spa-mcp.wangchang0409.workers.dev"
+	},
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"

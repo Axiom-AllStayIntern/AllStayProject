@@ -87,8 +87,6 @@ jobs:
           workingDirectory: apps/tablet
           command: deploy --config wrangler.jsonc --keep-vars
           secrets: |
-            MCP_SPA_URL
             MCP_SPA_API_TOKEN
         env:
-          MCP_SPA_URL: https://allstay-spa-mcp.wangchang0409.workers.dev
           MCP_SPA_API_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}
