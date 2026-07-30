@@ -227,7 +227,9 @@ export default {
 			return Response.json({ status: 'ok', service: 'spa', storage: 'd1' });
 		}
 
-		if (url.pathname !== '/api/mcp') return new Response('Not found', { status: 404 });
+		if (url.pathname !== '/mcp' && url.pathname !== '/api/mcp') {
+			return new Response('Not found', { status: 404 });
+		}
 		if (!(await isAuthorized(request, env))) return new Response('Unauthorized', { status: 401 });
 
 		const handler = createMcpHandler(() => createServer(env), {
@@ -235,11 +237,11 @@ export default {
 			corsOptions: false
 		});
 
-		// The Agents SDK handler defaults to `/mcp`. Keep AllStay's public
-		// `/api/mcp` contract, but normalize the internal transport URL so the
-		// deployed bundle does not depend on custom-route option handling.
-		const transportUrl = new URL(request.url);
-		transportUrl.pathname = '/mcp';
-		return handler(new Request(transportUrl, request), env, ctx);
+		if (url.pathname === '/mcp') return handler(request, env, ctx);
+
+		// Backward compatibility for callers still using `/api/mcp`.
+		const compatibilityUrl = new URL(request.url);
+		compatibilityUrl.pathname = '/mcp';
+		return handler(new Request(compatibilityUrl, request), env, ctx);
 	}
 } satisfies ExportedHandler<Env>;

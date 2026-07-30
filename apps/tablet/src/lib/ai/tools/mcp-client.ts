@@ -27,7 +27,8 @@ export interface McpToolResult {
 
 export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	const baseUrl = getServerUrls()[call.server].replace(/\/+$/, '');
-	const url = `${baseUrl}/api/mcp`;
+	const endpoint = call.server === 'spa' ? '/mcp' : '/api/mcp';
+	const url = `${baseUrl}${endpoint}`;
 	const body = {
 		jsonrpc: '2.0',
 		id: crypto.randomUUID(),
