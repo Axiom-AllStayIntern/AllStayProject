@@ -43,7 +43,10 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 				'Content-Type': 'application/json',
 				// StreamableHTTPServerTransport requires BOTH content types in Accept,
 				// otherwise it rejects the request with HTTP 406.
-				Accept: 'application/json, text/event-stream'
+				Accept: 'application/json, text/event-stream',
+				...(call.server === 'spa' && env.MCP_SPA_API_TOKEN
+					? { Authorization: `Bearer ${env.MCP_SPA_API_TOKEN}` }
+					: {})
 			},
 			body: JSON.stringify(body)
 		});

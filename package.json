@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/tablet",
+    "apps/spa-worker",
     "apps/mcp-servers",
     "apps/mcp-servers/packages/*",
     "packages/shared-types"
@@ -12,13 +13,17 @@
     "dev": "concurrently \"npm run dev:tablet\" \"npm run dev:mcp\"",
     "dev:tablet": "npm run dev --workspace=apps/tablet",
     "dev:mcp": "npm run dev --workspace=apps/mcp-servers",
+    "dev:spa-worker": "npm run dev --workspace=@allstay/spa-worker",
+    "deploy:spa-worker": "npm run deploy --workspace=@allstay/spa-worker",
     "build": "sh scripts/build.sh",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run check --workspaces --if-present"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260730.1",
     "concurrently": "^9.2.4",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "wrangler": "^4.115.0"
   },
   "overrides": {
     "@hono/node-server": "2.0.12",
