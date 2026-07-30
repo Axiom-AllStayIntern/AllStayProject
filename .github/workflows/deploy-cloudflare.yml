@@ -33,6 +33,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check Spa MCP Worker
+        run: npm run check --workspace=@allstay/spa-worker
+
+      - name: Deploy Spa MCP Worker
+        id: deploy-spa
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/spa-worker
+          command: deploy --config wrangler.jsonc --keep-vars
+          secrets: |
+            MCP_API_TOKEN
+        env:
+          MCP_API_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}
+
+      - name: Apply Spa D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/spa-worker
+          command: d1 migrations apply allstay-spa --remote --config wrangler.jsonc
+
       - name: Build tablet app
         run: npm run build --workspace=apps/tablet
 
@@ -53,9 +77,15 @@ jobs:
           }
 
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/tablet
-          command: deploy --config wrangler.jsonc
+          command: deploy --config wrangler.jsonc --keep-vars
+          secrets: |
+            MCP_SPA_URL
+            MCP_SPA_API_TOKEN
+        env:
+          MCP_SPA_URL: ${{ steps.deploy-spa.outputs.deployment-url }}
+          MCP_SPA_API_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}

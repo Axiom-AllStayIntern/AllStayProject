@@ -1,0 +1,23 @@
+{
+  "name": "@allstay/spa-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy --keep-vars",
+    "db:migrate:local": "wrangler d1 migrations apply allstay-spa --local",
+    "db:migrate:remote": "wrangler d1 migrations apply allstay-spa --remote"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "0.20.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.115.0"
+  }
+}

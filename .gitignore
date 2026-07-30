@@ -115,3 +115,6 @@ storybook-static/
 # -------------------------------
 .svelte-kit/
 apps/tablet/.svelte-kit/
+
+# Cloudflare local state
+.wrangler/
