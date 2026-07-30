@@ -1,0 +1,82 @@
+{
+  "nav": { "home": "Beranda", "dining": "Makan", "spa": "Spa", "restaurants": "Restoran", "explore": "Jelajah", "cart": "Keranjang" },
+  "header": { "room": "Kamar {room}", "cart": "Keranjang", "wifi": "Wi-Fi Hotel" },
+  "home": {
+    "welcome": "Selamat datang", "roomNumber": "Kamar {room}", "tagline": "Menginap jadi lebih mudah.",
+    "howCanWe": "Ada yang bisa kami bantu hari ini?", "services": "Layanan", "dining": "Layanan Kamar", "diningDesc": "Menu 24/7 · 20–40 mnt",
+    "spa": "Spa & Kebugaran", "spaDesc": "Perawatan · 9:00–22:00", "restaurants": "Restoran Hotel", "restaurantsDesc": "3 tempat · Pesan meja",
+    "amenities": "Fasilitas", "amenitiesDesc": "Kolam, gym, laundry & lainnya", "explore": "Jelajahi Bali", "exploreDesc": "Tur, transportasi & tips",
+    "cart": "Keranjang Saya", "cartEmptyLine": "Belum ada item", "conciergeTitle": "Butuh sesuatu? Concierge siap membantu.",
+    "conciergeSub": "Ari, kepala pelayan Anda hari ini · membalas < 2 menit", "chat": "Obrolan", "greetMorning": "Selamat Pagi",
+    "greetAfternoon": "Selamat Siang", "greetEvening": "Selamat Malam", "guest": "Tamu", "weather": "Cerah · 29°C", "checkout": "Check-out 12:00"
+  },
+  "dining": {
+    "title": "Layanan Kamar", "subtitle": "24 jam · diantar dalam 20–40 menit", "addToCart": "Tambah ke Keranjang",
+    "specialInstructions": "Instruksi khusus (opsional)", "noItems": "Tidak ada menu yang sesuai filter.", "quantity": "Jumlah",
+    "filtered": "Difilter:", "recommended": "Rekomendasi untuk Anda", "added": "{item} ditambahkan ke keranjang"
+  },
+  "spa": {
+    "title": "Spa & Kebugaran", "eyebrow": "Ketenangan di AllStay", "subtitle": "Perawatan terinspirasi ritual penyembuhan Bali · 9:00–22:00 · di kamar atau spa.",
+    "bookNow": "Pesan Sekarang", "bookTreatment": "Pesan perawatan", "duration": "{min} menit", "selectTime": "Pilih waktu",
+    "inRoom": "Di kamar", "atSpa": "Di Spa", "today": "Hari ini", "tomorrow": "Besok", "availableSlots": "Waktu tersedia",
+    "guests": "Jumlah tamu", "location": "Lokasi", "loadingSlots": "Memuat ketersediaan…", "noSlots": "Tidak ada waktu tersedia pada tanggal ini.",
+    "empty": "Layanan spa sementara tidak tersedia."
+  },
+  "restaurants": {
+    "title": "Restoran Hotel", "eyebrow": "Pesan meja", "subtitle": "Tiga restoran khas di seluruh resor. Pesanan dikonfirmasi dalam 5 menit.", "date": "Tanggal makan",
+    "reserveTable": "Pesan Meja", "partySize": "Jumlah tamu", "today": "Hari ini", "tomorrow": "Besok",
+    "availableSlots": "Waktu tersedia", "instructions": "Instruksi khusus (diet, alergi…)", "freeNote": "Tanpa biaya · bayar di restoran"
+  },
+  "explore": {
+    "title": "Jelajahi Bali", "activities": "Aktivitas", "transport": "Transportasi", "eyebrow": "Pilihan Concierge",
+    "subtitle": "Tur, transfer, dan tempat tersembunyi · diatur dari pintu ke pintu oleh butler Anda.", "perPerson": "/orang",
+    "duration": "Durasi: {duration}", "pickupDate": "Tanggal penjemputan", "pickupTime": "Waktu penjemputan", "today": "Hari ini",
+    "tomorrow": "Besok", "participants": "Jumlah peserta", "instructions": "Instruksi khusus...", "request": "Kirim Permintaan"
+  },
+  "cart": {
+    "title": "Keranjang Saya", "empty": "Keranjang Anda kosong", "emptyDesc": "Jelajahi menu dan tambahkan pilihan Anda.",
+    "browse": "Lihat menu", "subtotal": "Subtotal", "service": "Biaya layanan (10%)", "total": "Total", "placeOrder": "Buat Pesanan",
+    "confirmOrder": "Konfirmasi Pesanan", "ready": "{count} item · siap checkout", "readyOne": "1 item · siap checkout",
+    "dining": "Makan", "note": "Catatan", "remove": "Hapus"
+  },
+  "confirmation": {
+    "title": "Pesanan Dikonfirmasi!", "subtitle": "Pesanan telah dikirim ke dapur. Anda akan menerima notifikasi saat pesanan diantar.",
+    "orderNo": "No. Pesanan", "deliveryTo": "Diantar ke", "room": "Kamar", "eta": "Perkiraan tiba", "total": "Total",
+    "returnHome": "Kembali ke Beranda"
+  },
+  "amenities": { "title": "Fasilitas Hotel" },
+  "external": {
+    "activitiesTitle": "Aktivitas & Pengalaman", "activitiesSubtitle": "Dipilih oleh tim concierge kami — pesan melalui kami untuk harga terbaik.",
+    "wellnessTitle": "Kebugaran di Luar Hotel", "wellnessSubtitle": "Spa dan pengalaman kebugaran di luar hotel yang direkomendasikan concierge.",
+    "diningTitle": "Kuliner Lokal", "diningSubtitle": "Restoran di luar hotel pilihan tim concierge kami.", "conciergePick": "Pilihan Concierge",
+    "wellnessNote": "Butuh transportasi atau pemesanan? Concierge dapat mengatur semuanya, termasuk mobil hotel.",
+    "diningNote": "Ingin reservasi? Hubungi concierge — kami akan mengurus pemesanannya.", "book": "Pesan", "requestBooking": "Minta Pemesanan",
+    "bookingNote": "Concierge akan mengonfirmasi ketersediaan dan menghubungi kamar Anda dalam 30 menit.", "perPerson": "/ orang"
+  },
+  "transport": { "title": "Transportasi", "capacity": "Hingga {count} penumpang" },
+  "login": {
+    "hero1": "Semua kebutuhan perjalanan,", "hero2": "dalam SATU sentuhan.",
+    "subtitle": "Masuk untuk menyiapkan kamar. Setelah check-in, tamu menggunakan perangkat ini untuk bersantap, memesan spa, dan menjelajah.",
+    "staffId": "ID Staf", "staffIdExample": "mis. 0421-FO", "password": "Kata Sandi", "submit": "Masuk", "hint": "Khusus Resepsionis · Serahkan kepada tamu setelah masuk",
+    "togglePassword": "Tampilkan atau sembunyikan kata sandi"
+  },
+  "roomSelect": {
+    "title": "Selamat datang! Masukkan nomor kamar Anda", "subtitle": "Kami akan menyesuaikan pengalaman menginap Anda.",
+    "label": "Nomor Kamar", "confirm": "Konfirmasi", "hint": "Nomor kamar tercantum pada kartu kunci Anda.", "delete": "Hapus"
+  },
+  "staff": {
+    "kicker": "Cakrasoft Bridge · Meja SPA", "title": "Pesanan SPA Masuk", "subtitle": "Perintah kerja dari concierge — konfirmasikan ke Cakrasoft.",
+    "empty": "Belum ada pesanan — konfirmasikan pemesanan spa melalui concierge suara.", "room": "Kamar {room}", "confirmed": "Terkonfirmasi", "pending": "Menunggu",
+    "date": "Tanggal", "time": "Jam", "party": "Jumlah", "partyValue": "{count} tamu", "therapist": "Terapis", "notes": "Catatan", "code": "Kode",
+    "genderMale": "Terapis pria", "genderFemale": "Terapis wanita", "genderAny": "Tanpa preferensi", "confirm": "Konfirmasi ke Cakrasoft"
+  },
+  "voice": {
+    "start": "Ucapkan \"Mulai\" untuk memulai", "listening": "Mendengarkan…", "processing": "Memproses…", "speaking": "Berbicara…",
+    "ending": "Percakapan berakhir dalam 10 detik…", "dismiss": "Tutup", "startInput": "Mulai input suara", "stopRecording": "Hentikan rekaman", "interrupt": "Ketuk untuk menyela"
+  },
+  "common": {
+    "loading": "Memuat...", "error": "Terjadi kesalahan", "retry": "Coba lagi", "cancel": "Batal", "confirm": "Konfirmasi",
+    "back": "Kembali", "idr": "IDR", "date": "Tanggal", "time": "Waktu", "close": "Tutup", "continue": "Ketuk untuk melanjutkan",
+    "openNow": "Buka sekarang", "closed": "Tutup", "unavailable": "Tidak tersedia", "clearFilter": "Hapus filter", "viewMenu": "Lihat menu"
+  }
+}

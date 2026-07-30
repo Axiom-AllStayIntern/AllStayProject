@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { _ } from 'svelte-i18n';
 	interface LocalRest {
 		id: string;
 		name: string;
@@ -77,8 +78,8 @@
 </script>
 
 <div class="local-dining">
-	<h1 class="page-title">Local Dining</h1>
-	<p class="page-sub">Handpicked off-property restaurants recommended by our concierge team.</p>
+	<h1 class="page-title">{$_('external.diningTitle')}</h1>
+	<p class="page-sub">{$_('external.diningSubtitle')}</p>
 
 	<div class="list">
 		{#each localRestaurants as r}
@@ -86,7 +87,7 @@
 				<div class="rest-card__img-wrap">
 					<img src={r.imageUrl} alt={r.name} class="rest-card__img" />
 					{#if r.isRecommended}
-						<span class="recommended-badge">⭐ Concierge Pick</span>
+						<span class="recommended-badge">⭐ {$_('external.conciergePick')}</span>
 					{/if}
 				</div>
 				<div class="rest-card__body">
@@ -112,7 +113,7 @@
 
 	<div class="concierge-note">
 		<span class="concierge-icon">🔔</span>
-		<p>Want a reservation? Ask our concierge — we'll handle the booking for you.</p>
+		<p>{$_('external.diningNote')}</p>
 	</div>
 </div>
 

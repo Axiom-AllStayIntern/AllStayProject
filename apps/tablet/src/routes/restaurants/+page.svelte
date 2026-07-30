@@ -2,6 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { language, localize } from '$lib/stores/language.js';
+	import { _ } from 'svelte-i18n';
 	import { formatPrice } from '$lib/utils/format.js';
 	import type { PageData } from './$types';
 
@@ -60,9 +61,9 @@
 
 <!-- ── Page content ─────────────────────────────────────────── -->
 <div class="page-hero">
-	<div class="eyebrow">Reserve a table</div>
-	<h2>Hotel Restaurants</h2>
-	<p>Three signature venues across the resort. Bookings confirmed within 5 minutes.</p>
+	<div class="eyebrow">{$_('restaurants.eyebrow')}</div>
+	<h2>{$_('restaurants.title')}</h2>
+	<p>{$_('restaurants.subtitle')}</p>
 </div>
 
 <div class="venue-list">
@@ -74,9 +75,9 @@
 				{/if}
 				<div class="badges">
 					{#if v.isOpen}
-						<span class="pill success">Open now</span>
+						<span class="pill success">{$_('common.openNow')}</span>
 					{:else}
-						<span class="pill warn">Closed</span>
+						<span class="pill warn">{$_('common.closed')}</span>
 					{/if}
 				</div>
 			</div>
@@ -94,8 +95,8 @@
 				</div>
 				<p class="vdesc">{localize(v.description, $language)}</p>
 				<div class="actions">
-					<button class="btn-ghost">View menu</button>
-					<button class="btn-add" on:click={() => openSheet(v)} disabled={!v.isOpen}>Reserve</button>
+					<button class="btn-ghost">{$_('common.viewMenu')}</button>
+					<button class="btn-add" on:click={() => openSheet(v)} disabled={!v.isOpen}>{$_('restaurants.reserveTable')}</button>
 				</div>
 			</div>
 		</div>
@@ -119,20 +120,20 @@
 					<img src={sheetItem.imageUrl} alt={sheetItem.name.en} />
 				{/if}
 			</div>
-			<div class="sheet-cuisine">{sheetItem.cuisine[$language]}</div>
-			<h3>{sheetItem.name[$language]}</h3>
-			<p class="sheet-desc">{sheetItem.description[$language]}</p>
+			<div class="sheet-cuisine">{localize(sheetItem.cuisine, $language)}</div>
+			<h3>{localize(sheetItem.name, $language)}</h3>
+			<p class="sheet-desc">{localize(sheetItem.description, $language)}</p>
 
 			<div class="field-block">
-				<span class="lbl">Dining date</span>
+				<span class="lbl">{$_('restaurants.date')}</span>
 				<div class="seg">
-					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>Today</button>
-					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>Tomorrow</button>
+					<button class:on={sheetDate === 'today'} on:click={() => sheetDate = 'today'}>{$_('restaurants.today')}</button>
+					<button class:on={sheetDate === 'tomorrow'} on:click={() => sheetDate = 'tomorrow'}>{$_('restaurants.tomorrow')}</button>
 				</div>
 			</div>
 
 			<div class="field-block">
-				<span class="lbl">Available time slots</span>
+				<span class="lbl">{$_('restaurants.availableSlots')}</span>
 				<div class="slot-grid">
 					{#each timeSlots as slot}
 						<button
@@ -146,7 +147,7 @@
 			</div>
 
 			<div class="qty-row">
-				<span class="lbl">Party size</span>
+				<span class="lbl">{$_('restaurants.partySize')}</span>
 				<div class="qty">
 					<button on:click={() => sheetParty = Math.max(1, sheetParty - 1)} disabled={sheetParty <= 1}>−</button>
 					<span class="num">{sheetParty}</span>
@@ -154,12 +155,12 @@
 				</div>
 			</div>
 
-			<textarea class="instructions" bind:value={sheetNote} placeholder="Special instructions (dietary, allergies…)"></textarea>
+			<textarea class="instructions" bind:value={sheetNote} placeholder={$_('restaurants.instructions')}></textarea>
 
 			<div class="sheet-cta">
-				<div class="free-note">No charge · pay at venue</div>
+				<div class="free-note">{$_('restaurants.freeNote')}</div>
 				<button class="btn btn-primary" on:click={submitReservation} disabled={!sheetTime}>
-					Reserve table
+					{$_('restaurants.reserveTable')}
 				</button>
 			</div>
 		</div>

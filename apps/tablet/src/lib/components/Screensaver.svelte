@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { idle } from '$lib/stores/idle.js';
+	import { _ } from 'svelte-i18n';
 </script>
 
 {#if $idle}
@@ -9,7 +10,7 @@
 			<div class="ss-brand">
 				<span class="all">All</span><span class="stay">Stay</span>
 			</div>
-			<p class="ss-tap">Tap to continue · 轻触屏幕继续</p>
+			<p class="ss-tap">{$_('common.continue')}</p>
 		</div>
 	</div>
 {/if}

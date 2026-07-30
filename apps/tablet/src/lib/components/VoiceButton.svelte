@@ -2,9 +2,10 @@
 	import { startRecording, stopRecording, isRecording } from '$lib/utils/recorder.js';
 	import { processVoiceInput, type AIResponse } from '$lib/services/ai-conversation.js';
 	import { speakText, stopSpeaking } from '$lib/utils/tts.js';
+	import { _ } from 'svelte-i18n';
 
 	export let onResult: (response: AIResponse) => void;
-	export let language: 'en' | 'zh' = 'zh';
+	export let language: 'en' | 'zh' | 'id' = 'zh';
 
 	type State = 'idle' | 'listening' | 'processing' | 'speaking';
 	let state: State = 'idle';
@@ -54,10 +55,10 @@
 	}
 
 	$: label =
-		state === 'idle' ? 'Start voice input' :
-		state === 'listening' ? 'Stop recording' :
-		state === 'processing' ? 'Processing…' :
-		'Speaking…';
+		state === 'idle' ? $_('voice.startInput') :
+		state === 'listening' ? $_('voice.stopRecording') :
+		state === 'processing' ? $_('voice.processing') :
+		$_('voice.speaking');
 </script>
 
 <button

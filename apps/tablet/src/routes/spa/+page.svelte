@@ -1,10 +1,11 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
-	import { language } from '$lib/stores/language.js';
+	import { language, localize } from '$lib/stores/language.js';
 	import { roomNumber } from '$lib/stores/room.js';
 	import { formatPrice } from '$lib/utils/format.js';
 	import type { PageData } from './$types';
+	import { _ } from 'svelte-i18n';
 
 	export let data: PageData;
 
@@ -98,15 +99,15 @@
 
 <!-- ── Page content ─────────────────────────────────────────── -->
 <div class="page-hero">
-	<div class="eyebrow">Sanctuary at AllStay</div>
-	<h2>Spa &amp; Wellness</h2>
-	<p>Treatments inspired by Balinese healing rituals · 9:00 – 22:00 · In-room or in-spa.</p>
+	<div class="eyebrow">{$_('spa.eyebrow')}</div>
+	<h2>{$_('spa.title')}</h2>
+	<p>{$_('spa.subtitle')}</p>
 </div>
 
 <div class="spa-list">
 	{#if data.services.length === 0}
 		<div class="spa-empty">
-			{data.sourceError ? 'Spa services are temporarily unavailable. Please try again shortly.' : 'No spa treatments available right now.'}
+			{$_('spa.empty')}
 		</div>
 	{/if}
 	{#each data.services as s}
@@ -118,24 +119,24 @@
 			</div>
 			<div class="info">
 				<div class="name">
-					{s.name[$language]}
+					{localize(s.name, $language)}
 					{#if $language === 'en'}<span class="cn">{s.name.zh}</span>{/if}
 				</div>
 				<div class="meta">
 					<span class="pill">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-						{s.duration} min
+						{$_('spa.duration', { values: { min: s.duration } })}
 					</span>
 					{#if s.isAvailable}
-						<span class="pill success">Open now</span>
+						<span class="pill success">{$_('common.openNow')}</span>
 					{:else}
-						<span class="pill warn">Unavailable</span>
+						<span class="pill warn">{$_('common.unavailable')}</span>
 					{/if}
 				</div>
-				<div class="desc">{s.description[$language]}</div>
+				<div class="desc">{localize(s.description, $language)}</div>
 				<div class="pricerow">
 					<div class="price">{formatPrice(s.price)}</div>
-					<button class="btn-add" on:click={() => openSheet(s)} disabled={!s.isAvailable}>Book</button>
+					<button class="btn-add" on:click={() => openSheet(s)} disabled={!s.isAvailable}>{$_('spa.bookNow')}</button>
 				</div>
 			</div>
 		</div>
@@ -154,32 +155,32 @@
 	<div class="sheet show" role="dialog" aria-modal="true">
 		<div class="grabber"></div>
 		<div class="sheet-body">
-			<div class="big-thumb">// {sheetItem.name.en.toUpperCase()} ·· wellness ritual</div>
-			<h3>{sheetItem.name[$language]}</h3>
-			<p class="sheet-desc">{sheetItem.description[$language]} · <strong>{sheetItem.duration} min</strong></p>
+			<div class="big-thumb">{localize(sheetItem.name, $language).toUpperCase()}</div>
+			<h3>{localize(sheetItem.name, $language)}</h3>
+			<p class="sheet-desc">{localize(sheetItem.description, $language)} · <strong>{$_('spa.duration', { values: { min: sheetItem.duration } })}</strong></p>
 
 			<div class="field-block">
-				<span class="lbl">Location</span>
+				<span class="lbl">{$_('spa.location')}</span>
 				<div class="seg">
-					<button class:on={sheetLocation === 'inRoom'} on:click={() => sheetLocation = 'inRoom'}>In-room</button>
-					<button class:on={sheetLocation === 'atSpa'} on:click={() => sheetLocation = 'atSpa'}>At the Spa</button>
+					<button class:on={sheetLocation === 'inRoom'} on:click={() => sheetLocation = 'inRoom'}>{$_('spa.inRoom')}</button>
+					<button class:on={sheetLocation === 'atSpa'} on:click={() => sheetLocation = 'atSpa'}>{$_('spa.atSpa')}</button>
 				</div>
 			</div>
 
 			<div class="field-block">
-				<span class="lbl">Date</span>
+				<span class="lbl">{$_('common.date')}</span>
 				<div class="seg">
-					<button class:on={sheetDate === 'today'} on:click={() => pickDate('today')}>Today</button>
-					<button class:on={sheetDate === 'tomorrow'} on:click={() => pickDate('tomorrow')}>Tomorrow</button>
+					<button class:on={sheetDate === 'today'} on:click={() => pickDate('today')}>{$_('spa.today')}</button>
+					<button class:on={sheetDate === 'tomorrow'} on:click={() => pickDate('tomorrow')}>{$_('spa.tomorrow')}</button>
 				</div>
 			</div>
 
 			<div class="field-block">
-				<span class="lbl">Available time slots</span>
+				<span class="lbl">{$_('spa.availableSlots')}</span>
 				{#if slotsLoading}
-					<div class="slots-note">Checking availability…</div>
+					<div class="slots-note">{$_('spa.loadingSlots')}</div>
 				{:else if slots.length === 0}
-					<div class="slots-note">No times available for this day.</div>
+					<div class="slots-note">{$_('spa.noSlots')}</div>
 				{:else}
 					<div class="slot-grid">
 						{#each slots as slot}
@@ -195,7 +196,7 @@
 			</div>
 
 			<div class="qty-row">
-				<span class="lbl">Guests</span>
+				<span class="lbl">{$_('spa.guests')}</span>
 				<div class="qty">
 					<button on:click={() => sheetGuests = Math.max(1, sheetGuests - 1)} disabled={sheetGuests <= 1}>−</button>
 					<span class="num">{sheetGuests}</span>
@@ -206,7 +207,7 @@
 			<div class="sheet-cta">
 				<div class="total-prev">{formatPrice(sheetItem.price * sheetGuests)}</div>
 				<button class="btn btn-primary" on:click={submitBooking} disabled={!sheetTime}>
-					Book treatment
+					{$_('spa.bookTreatment')}
 				</button>
 			</div>
 		</div>
@@ -273,7 +274,7 @@
 	.desc {
 		margin: 4px 0 10px;
 		font-size: 12.5px; color: var(--ink-3); line-height: 1.45;
-		display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+		display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	}
 	.pricerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 	.price { font: 600 15px/1 var(--font-ui); color: var(--navy-800); }

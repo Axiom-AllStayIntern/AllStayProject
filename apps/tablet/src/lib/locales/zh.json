@@ -1,54 +1,74 @@
 {
-  "nav": {
-    "home": "首页",
-    "dining": "餐饮",
-    "spa": "水疗",
-    "restaurants": "餐厅",
-    "explore": "探索",
-    "cart": "购物车"
-  },
+  "nav": { "home": "首页", "dining": "餐饮", "spa": "水疗", "restaurants": "餐厅", "explore": "探索", "cart": "购物车" },
+  "header": { "room": "{room} 房间", "cart": "购物车", "wifi": "酒店 Wi-Fi" },
   "home": {
-    "welcome": "欢迎",
-    "roomNumber": "{room} 房间",
-    "tagline": "让您的住宿更轻松。"
+    "welcome": "欢迎", "roomNumber": "{room} 房间", "tagline": "让您的住宿更轻松。",
+    "howCanWe": "今天我们能为您做些什么？", "services": "服务", "dining": "客房送餐", "diningDesc": "24小时菜单 · 20–40 分钟",
+    "spa": "水疗与康体", "spaDesc": "理疗 · 9:00–22:00", "restaurants": "酒店餐厅", "restaurantsDesc": "3 家餐厅 · 预约餐位",
+    "amenities": "设施", "amenitiesDesc": "泳池、健身房、洗衣等", "explore": "探索巴厘", "exploreDesc": "行程、用车与攻略",
+    "cart": "我的购物车", "cartEmptyLine": "购物车暂无商品", "conciergeTitle": "需要协助？礼宾随时为您服务。",
+    "conciergeSub": "今日管家 Ari · 2 分钟内回复", "chat": "对话", "greetMorning": "早上好", "greetAfternoon": "下午好",
+    "greetEvening": "晚上好", "guest": "贵宾", "weather": "晴 · 29°C", "checkout": "退房 12:00"
   },
   "dining": {
-    "title": "客房餐饮",
-    "addToCart": "加入购物车",
-    "specialInstructions": "特殊说明（可选）",
-    "noItems": "暂无可用菜品"
+    "title": "客房送餐", "subtitle": "全天候服务 · 20–40 分钟送达", "addToCart": "加入购物车", "specialInstructions": "特殊说明（可选）",
+    "noItems": "暂无相关菜品", "quantity": "数量", "filtered": "筛选：", "recommended": "为您推荐", "added": "{item} 已加入购物车"
   },
   "spa": {
-    "title": "水疗养生",
-    "bookNow": "立即预约",
-    "duration": "{min} 分钟",
-    "selectTime": "选择时间"
+    "title": "水疗养生", "eyebrow": "AllStay 静谧之所", "subtitle": "灵感源自巴厘疗愈仪式 · 9:00–22:00 · 可选客房或水疗中心。",
+    "bookNow": "立即预约", "bookTreatment": "预约疗程", "duration": "{min} 分钟", "selectTime": "选择时间", "inRoom": "客房内",
+    "atSpa": "水疗中心", "today": "今天", "tomorrow": "明天", "availableSlots": "可预约时段", "guests": "人数", "location": "地点",
+    "loadingSlots": "正在查询可用时段…", "noSlots": "当天暂无可预约时段。", "empty": "水疗服务暂时不可用。"
   },
   "restaurants": {
-    "title": "酒店餐厅",
-    "reserveTable": "预订餐位",
-    "partySize": "用餐人数"
+    "title": "酒店餐厅", "eyebrow": "预订餐位", "subtitle": "度假村内三间特色餐厅，预订将在 5 分钟内确认。", "date": "用餐日期",
+    "reserveTable": "预订餐位", "partySize": "用餐人数", "today": "今天", "tomorrow": "明天",
+    "availableSlots": "可预约时段", "instructions": "特殊说明（饮食偏好、过敏等）", "freeNote": "无需预付 · 到店结算"
   },
   "explore": {
-    "title": "探索巴厘岛",
-    "activities": "活动",
-    "transport": "交通"
+    "title": "探索巴厘岛", "activities": "活动", "transport": "交通", "eyebrow": "礼宾精选", "subtitle": "行程、接送与秘境体验 · 管家为您安排门到门服务。",
+    "perPerson": "/人", "duration": "时长：{duration}", "pickupDate": "接送日期", "pickupTime": "接送时间", "today": "今天",
+    "tomorrow": "明天", "participants": "参与人数", "instructions": "特殊说明…", "request": "提交需求"
   },
   "cart": {
-    "title": "您的订单",
-    "empty": "购物车为空",
-    "subtotal": "小计",
-    "total": "合计",
-    "placeOrder": "下单",
-    "confirmOrder": "确认订单"
+    "title": "我的购物车", "empty": "购物车空空如也", "emptyDesc": "浏览菜单，把心动的加进来吧。", "browse": "浏览菜单",
+    "subtotal": "小计", "service": "服务费 (10%)", "total": "总计", "placeOrder": "下单", "confirmOrder": "确认订单",
+    "ready": "共 {count} 件 · 准备结算", "readyOne": "共 1 件 · 准备结算", "dining": "餐饮", "note": "备注", "remove": "移除"
+  },
+  "confirmation": {
+    "title": "订单已确认！", "subtitle": "订单已送达厨房，出餐时您将收到通知。", "orderNo": "订单号", "deliveryTo": "送至",
+    "room": "房间", "eta": "预计送达", "total": "总计", "returnHome": "返回首页"
+  },
+  "amenities": { "title": "酒店设施" },
+  "external": {
+    "activitiesTitle": "活动与体验", "activitiesSubtitle": "由礼宾团队精选，通过我们预订可享最优价格。",
+    "wellnessTitle": "外部康体", "wellnessSubtitle": "礼宾推荐的酒店外水疗与康体体验。",
+    "diningTitle": "本地餐饮", "diningSubtitle": "礼宾团队精选的酒店外餐厅。", "conciergePick": "礼宾推荐",
+    "wellnessNote": "需要用车或预约？礼宾可为您安排一切，包括酒店专车接送。", "diningNote": "需要订位？交给礼宾，我们会为您完成预订。",
+    "book": "预约", "requestBooking": "提交预约", "bookingNote": "礼宾将在确认余位后于 30 分钟内联系您的房间。", "perPerson": "/ 人"
+  },
+  "transport": { "title": "交通", "capacity": "最多 {count} 位乘客" },
+  "login": {
+    "hero1": "一键满足旅途所需", "hero2": "All in one tap.", "subtitle": "员工登录以为房间初始化。客人入住后将通过本设备点餐、预约水疗和探索行程。",
+    "staffId": "员工编号", "staffIdExample": "例如 0421-FO", "password": "密码", "submit": "登录", "hint": "前台专用 · 登录后请交给客人", "togglePassword": "显示或隐藏密码"
+  },
+  "roomSelect": {
+    "title": "欢迎！请输入您的房间号", "subtitle": "我们将为您定制专属体验。", "label": "房间号", "confirm": "确认",
+    "hint": "房间号可在您的房卡上找到。", "delete": "删除"
+  },
+  "staff": {
+    "kicker": "Cakrasoft 桥接 · 水疗前台", "title": "新水疗订单", "subtitle": "来自礼宾的工单，请逐一确认至 Cakrasoft。",
+    "empty": "暂无工单——可通过语音礼宾确认一笔水疗预约。", "room": "房间 {room}", "confirmed": "已确认", "pending": "待处理",
+    "date": "日期", "time": "时间", "party": "人数", "partyValue": "{count} 位", "therapist": "理疗师", "notes": "备注", "code": "代码",
+    "genderMale": "男性理疗师", "genderFemale": "女性理疗师", "genderAny": "无偏好", "confirm": "确认至 Cakrasoft"
+  },
+  "voice": {
+    "start": "说“开始”即可唤醒", "listening": "正在聆听…", "processing": "处理中…", "speaking": "正在回复…",
+    "ending": "对话将在 10 秒后结束…", "dismiss": "关闭", "startInput": "开始语音输入", "stopRecording": "停止录音", "interrupt": "轻触打断"
   },
   "common": {
-    "loading": "加载中...",
-    "error": "出现错误",
-    "retry": "重试",
-    "cancel": "取消",
-    "confirm": "确认",
-    "back": "返回",
-    "idr": "印尼盾"
+    "loading": "加载中...", "error": "出现错误", "retry": "重试", "cancel": "取消", "confirm": "确认", "back": "返回",
+    "idr": "印尼盾", "date": "日期", "time": "时间", "close": "关闭", "continue": "轻触屏幕继续",
+    "openNow": "营业中", "closed": "已打烊", "unavailable": "不可预约", "clearFilter": "清除筛选", "viewMenu": "查看菜单"
   }
 }

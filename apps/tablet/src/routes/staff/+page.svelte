@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
+	import { _ } from 'svelte-i18n';
 
 	export let data: PageData;
 
-	const GENDER_ID: Record<string, string> = {
-		male: 'Terapis pria',
-		female: 'Terapis wanita',
-		no_preference: 'Tanpa preferensi'
-	};
+	function genderLabel(value: string): string {
+		if (value === 'male') return $_('staff.genderMale');
+		if (value === 'female') return $_('staff.genderFemale');
+		return $_('staff.genderAny');
+	}
 
 	function timeLabel(ms: number): string {
 		try {
@@ -21,30 +22,30 @@
 
 <div class="wrap">
 	<header>
-		<div class="kicker">Cakrasoft Bridge · SPA Desk</div>
-		<h1>Pesanan SPA Masuk</h1>
-		<p class="sub">Work orders from the concierge — confirm each into Cakrasoft.</p>
+		<div class="kicker">{$_('staff.kicker')}</div>
+		<h1>{$_('staff.title')}</h1>
+		<p class="sub">{$_('staff.subtitle')}</p>
 	</header>
 
 	{#if data.orders.length === 0}
-		<div class="empty">Belum ada pesanan. (No work orders yet — confirm a spa booking via the voice concierge.)</div>
+		<div class="empty">{$_('staff.empty')}</div>
 	{/if}
 
 	<div class="list">
 		{#each data.orders as o (o.confirmationCode)}
 			<article class="card" class:done={o.status === 'confirmed'}>
 				<div class="top">
-					<span class="room">Kamar {o.roomId}</span>
-					<span class="badge {o.status}">{o.status === 'confirmed' ? 'Terkonfirmasi' : 'Menunggu'}</span>
+					<span class="room">{$_('staff.room', { values: { room: o.roomId } })}</span>
+					<span class="badge {o.status}">{$_(o.status === 'confirmed' ? 'staff.confirmed' : 'staff.pending')}</span>
 				</div>
 				<h2>{o.treatmentNameId}</h2>
 				<dl>
-					<div><dt>Tanggal</dt><dd>{o.date}</dd></div>
-					<div><dt>Jam</dt><dd>{o.time}</dd></div>
-					<div><dt>Jumlah</dt><dd>{o.partySize ?? 1} tamu</dd></div>
-					<div><dt>Terapis</dt><dd>{GENDER_ID[o.therapistGenderPref ?? 'no_preference']}</dd></div>
-					{#if o.notes}<div><dt>Catatan</dt><dd>{o.notes}</dd></div>{/if}
-					<div><dt>Kode</dt><dd class="code">{o.confirmationCode}</dd></div>
+					<div><dt>{$_('staff.date')}</dt><dd>{o.date}</dd></div>
+					<div><dt>{$_('staff.time')}</dt><dd>{o.time}</dd></div>
+					<div><dt>{$_('staff.party')}</dt><dd>{$_('staff.partyValue', { values: { count: o.partySize ?? 1 } })}</dd></div>
+					<div><dt>{$_('staff.therapist')}</dt><dd>{genderLabel(o.therapistGenderPref ?? 'no_preference')}</dd></div>
+					{#if o.notes}<div><dt>{$_('staff.notes')}</dt><dd>{o.notes}</dd></div>{/if}
+					<div><dt>{$_('staff.code')}</dt><dd class="code">{o.confirmationCode}</dd></div>
 				</dl>
 
 				{#if o.guestFlags.length}
@@ -58,7 +59,7 @@
 				{#if o.status !== 'confirmed'}
 					<form method="POST" action="?/confirm" use:enhance>
 						<input type="hidden" name="id" value={o.confirmationCode} />
-						<button type="submit">Konfirmasi ke Cakrasoft</button>
+						<button type="submit">{$_('staff.confirm')}</button>
 					</form>
 				{/if}
 			</article>

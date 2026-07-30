@@ -3,6 +3,7 @@
 	import { cartItemCount } from '$lib/stores/cart.js';
 	import { language } from '$lib/stores/language.js';
 	import { roomNumber } from '$lib/stores/room.js';
+	import { _ } from 'svelte-i18n';
 
 	function getTime() {
 		return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -14,7 +15,7 @@
 <!-- Status bar -->
 <div class="statusbar">
 	<span>{time}</span>
-	<div class="right"><span>Hotel Wi-Fi</span><span class="dot"></span><span>100%</span></div>
+		<div class="right"><span>{$_('header.wifi')}</span><span class="dot"></span><span>100%</span></div>
 </div>
 
 <!-- App header -->
@@ -22,7 +23,7 @@
 	{#if $roomNumber}
 		<div class="room-pill">
 			<span class="dot"></span>
-			<span>Room&nbsp;<strong>{$roomNumber}</strong></span>
+			<span>{$_('header.room', { values: { room: $roomNumber } })}</span>
 		</div>
 	{/if}
 
@@ -32,7 +33,7 @@
 			<button class:on={$language === 'zh'} on:click={() => language.set('zh')}>中文</button>
 			<button class:on={$language === 'id'} on:click={() => language.set('id')}>ID</button>
 		</div>
-		<button class="icon-btn" on:click={() => goto('/cart')} aria-label="Cart">
+		<button class="icon-btn" on:click={() => goto('/cart')} aria-label={$_('header.cart')}>
 			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
 				<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
 				<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>

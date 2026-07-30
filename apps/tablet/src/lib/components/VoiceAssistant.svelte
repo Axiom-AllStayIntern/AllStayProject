@@ -7,6 +7,7 @@
 	import { extractSentences } from '$lib/utils/sentence-chunker.js';
 	import { language } from '$lib/stores/language.js';
 	import { conversationHistory } from '$lib/stores/conversation.js';
+	import { _ } from 'svelte-i18n';
 
 	export let onResult: (r: AIResponse) => void;
 
@@ -384,17 +385,17 @@
 	$: bubbles = $conversationHistory.slice(-3);
 
 	$: ariaLabel =
-		state === 'idle'        ? 'Say "Start" to begin' :
-		state === 'listening'   ? 'Listening…' :
-		state === 'processing'  ? 'Processing…' :
-		                          'Tap to interrupt';
+		state === 'idle'        ? $_('voice.start') :
+		state === 'listening'   ? $_('voice.listening') :
+		state === 'processing'  ? $_('voice.processing') :
+		                          $_('voice.interrupt');
 </script>
 
 <div class="assistant-root">
 	<!-- ── Session warning ──────────────────────────────────────────────── -->
 	{#if showSessionWarning}
 		<div class="session-warning" role="alert">
-			{$language === 'zh' ? '对话将在10秒后结束' : 'Conversation ending in 10s…'}
+			{$_('voice.ending')}
 		</div>
 	{/if}
 

@@ -1,30 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { ActionData } from './$types';
+	import { language } from '$lib/stores/language.js';
+	import { _ } from 'svelte-i18n';
 
 	export let form: ActionData;
 
-	let lang: 'en' | 'zh' = 'en';
 	let showPw = false;
 	let staffId = '';
 	let password = '';
-
-	const T = {
-		en: {
-			hero1: 'Everything for your trip,', hero2: 'in ONE tap.',
-			sub: 'Sign in to set up the room. Guests use this device after check-in to dine, book spa, and explore.',
-			staffId: 'Staff ID', password: 'Password', login: 'Login',
-			hint: 'Front Desk · For staff use only · Press Login to hand to guest'
-		},
-		zh: {
-			hero1: '一键满足旅途所需', hero2: 'All in one tap.',
-			sub: '员工登录以为房间初始化。客人入住后将通过本设备点餐、预约水疗和探索行程。',
-			staffId: '员工编号', password: '密码', login: '登录',
-			hint: '前台专用 · 登录后请交给客人'
-		}
-	} as const;
-
-	$: t = T[lang];
 
 	function getTime() {
 		return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -37,7 +21,7 @@
 	<!-- Status bar -->
 	<div class="statusbar light">
 		<span>{time}</span>
-		<div class="right"><span>Hotel Wi-Fi</span><span class="dot"></span><span>100%</span></div>
+		<div class="right"><span>{$_('header.wifi')}</span><span class="dot"></span><span>100%</span></div>
 	</div>
 
 	<div class="login page-enter">
@@ -48,15 +32,16 @@
 				<div class="brand-name"><span class="all">All</span><span class="stay">Stay</span></div>
 			</div>
 			<div class="langtoggle" role="tablist">
-				<button class:on={lang === 'en'} on:click={() => lang = 'en'}>EN</button>
-				<button class:on={lang === 'zh'} on:click={() => lang = 'zh'}>中文</button>
+				<button class:on={$language === 'en'} on:click={() => language.set('en')}>EN</button>
+				<button class:on={$language === 'zh'} on:click={() => language.set('zh')}>中文</button>
+				<button class:on={$language === 'id'} on:click={() => language.set('id')}>ID</button>
 			</div>
 		</div>
 
 		<!-- Hero -->
 		<div class="hero">
-			<h1>{t.hero1}<br><em>{t.hero2}</em></h1>
-			<p class="sub">{t.sub}</p>
+			<h1>{$_('login.hero1')}<br><em>{$_('login.hero2')}</em></h1>
+			<p class="sub">{$_('login.subtitle')}</p>
 		</div>
 
 		<!-- Form -->
@@ -66,21 +51,21 @@
 			{/if}
 
 			<div class="field">
-				<label>{t.staffId}</label>
+				<label for="staff-id">{$_('login.staffId')}</label>
 				<div class="input-wrap">
-					<input type="text" placeholder="e.g. 0421-FO" name="staffId" bind:value={staffId} autocomplete="off" />
+					<input id="staff-id" type="text" placeholder={$_('login.staffIdExample')} name="staffId" bind:value={staffId} autocomplete="off" />
 				</div>
 			</div>
 
 			<div class="field">
-				<label>{t.password}</label>
+				<label for="staff-password">{$_('login.password')}</label>
 				<div class="input-wrap">
 					{#if showPw}
-						<input type="text" name="pin" placeholder="••••••••" bind:value={password} autocomplete="current-password" />
+						<input id="staff-password" type="text" name="pin" placeholder="••••••••" bind:value={password} autocomplete="current-password" />
 					{:else}
-						<input type="password" name="pin" placeholder="••••••••" bind:value={password} autocomplete="current-password" />
+						<input id="staff-password" type="password" name="pin" placeholder="••••••••" bind:value={password} autocomplete="current-password" />
 					{/if}
-					<button type="button" class="eye" on:click={() => showPw = !showPw} aria-label="Toggle password">
+					<button type="button" class="eye" on:click={() => showPw = !showPw} aria-label={$_('login.togglePassword')}>
 						{#if showPw}
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -98,11 +83,11 @@
 			</div>
 
 			<div class="field" style="margin-top: 28px;">
-				<button type="submit" class="btn btn-primary btn-block">{t.login}</button>
+				<button type="submit" class="btn btn-primary btn-block">{$_('login.submit')}</button>
 			</div>
 		</form>
 
-		<p class="footer-hint">{t.hint}</p>
+		<p class="footer-hint">{$_('login.hint')}</p>
 	</div>
 
 	<div class="navbar dark">

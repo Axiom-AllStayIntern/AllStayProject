@@ -1,54 +1,85 @@
 {
-  "nav": {
-    "home": "Home",
-    "dining": "Dining",
-    "spa": "Spa",
-    "restaurants": "Restaurants",
-    "explore": "Explore",
-    "cart": "Cart"
-  },
+  "nav": { "home": "Home", "dining": "Dining", "spa": "Spa", "restaurants": "Restaurants", "explore": "Explore", "cart": "Cart" },
+  "header": { "room": "Room {room}", "cart": "Cart", "wifi": "Hotel Wi-Fi" },
   "home": {
-    "welcome": "Welcome",
-    "roomNumber": "Room {room}",
-    "tagline": "Your stay, simplified."
+    "welcome": "Welcome", "roomNumber": "Room {room}", "tagline": "Your stay, simplified.",
+    "howCanWe": "How can we help today?", "services": "Services", "dining": "In-Room Dining",
+    "diningDesc": "24/7 menu · 20–40 min", "spa": "Spa & Wellness", "spaDesc": "Treatments · 9:00–22:00",
+    "restaurants": "Hotel Restaurants", "restaurantsDesc": "3 venues · Reserve a table", "amenities": "Amenities",
+    "amenitiesDesc": "Pool, gym, laundry & more", "explore": "Explore Bali", "exploreDesc": "Tours, transport & tips",
+    "cart": "My Cart", "cartEmptyLine": "No items yet", "conciergeTitle": "Need anything? Concierge is one tap away.",
+    "conciergeSub": "Ari, your butler today · responds in < 2 minutes", "chat": "Chat", "greetMorning": "Good Morning",
+    "greetAfternoon": "Good Afternoon", "greetEvening": "Good Evening", "guest": "Guest", "weather": "Sunny · 29°C",
+    "checkout": "Check-out 12:00"
   },
   "dining": {
-    "title": "Room Dining",
-    "addToCart": "Add to Cart",
-    "specialInstructions": "Special instructions (optional)",
-    "noItems": "No items available"
+    "title": "In-Room Dining", "subtitle": "24 hours · delivered in 20–40 minutes", "addToCart": "Add to Cart",
+    "specialInstructions": "Special instructions (optional)", "noItems": "No items match this filter.",
+    "quantity": "Quantity", "filtered": "Filtered:", "recommended": "Recommended for you", "added": "{item} added to cart"
   },
   "spa": {
-    "title": "Spa & Wellness",
-    "bookNow": "Book Now",
-    "duration": "{min} minutes",
-    "selectTime": "Select a time"
+    "title": "Spa & Wellness", "eyebrow": "Sanctuary at AllStay", "subtitle": "Treatments inspired by Balinese healing rituals · 9:00–22:00 · In-room or in-spa.",
+    "bookNow": "Book Now", "bookTreatment": "Book treatment", "duration": "{min} minutes", "selectTime": "Select a time",
+    "inRoom": "In-room", "atSpa": "At the Spa", "today": "Today", "tomorrow": "Tomorrow",
+    "availableSlots": "Available time slots", "guests": "Guests", "location": "Location", "loadingSlots": "Loading availability...",
+    "noSlots": "No times available for this date.", "empty": "Spa services are temporarily unavailable."
   },
   "restaurants": {
-    "title": "Hotel Restaurants",
-    "reserveTable": "Reserve a Table",
-    "partySize": "Party size"
+    "title": "Hotel Restaurants", "eyebrow": "Reserve a table", "subtitle": "Three signature venues across the resort. Bookings confirmed within 5 minutes.", "date": "Dining date",
+    "reserveTable": "Reserve a Table", "partySize": "Party size", "today": "Today",
+    "tomorrow": "Tomorrow", "availableSlots": "Available time slots", "instructions": "Special instructions (dietary, allergies…)",
+    "freeNote": "No charge · pay at venue"
   },
   "explore": {
-    "title": "Explore Bali",
-    "activities": "Activities",
-    "transport": "Transport"
+    "title": "Explore Bali", "activities": "Activities", "transport": "Transport", "eyebrow": "Curated by the Concierge",
+    "subtitle": "Tours, transfers, and hidden gems · arranged door-to-door by your butler.", "perPerson": "/person",
+    "duration": "Duration: {duration}", "pickupDate": "Pickup date", "pickupTime": "Pickup time", "today": "Today",
+    "tomorrow": "Tomorrow", "participants": "Participants", "instructions": "Special instructions...", "request": "Request"
   },
   "cart": {
-    "title": "Your Order",
-    "empty": "Your cart is empty",
-    "subtotal": "Subtotal",
-    "total": "Total",
-    "placeOrder": "Place Order",
-    "confirmOrder": "Confirm Order"
+    "title": "My Cart", "empty": "Your cart is empty", "emptyDesc": "Browse the menu and add what tempts you.",
+    "browse": "Browse menu", "subtotal": "Subtotal", "service": "Service charge (10%)", "total": "Total",
+    "placeOrder": "Place Order", "confirmOrder": "Confirm Order", "ready": "{count} items · ready to check out",
+    "readyOne": "1 item · ready to check out", "dining": "Dining", "note": "Note", "remove": "Remove"
+  },
+  "confirmation": {
+    "title": "Order Confirmed!", "subtitle": "We've sent your order to the kitchen. You'll receive a notification when it's on its way.",
+    "orderNo": "Order No.", "deliveryTo": "Delivery to", "room": "Room", "eta": "Estimated arrival", "total": "Total",
+    "returnHome": "Return to Home"
+  },
+  "amenities": { "title": "Hotel Amenities" },
+  "external": {
+    "activitiesTitle": "Activities & Experiences", "activitiesSubtitle": "Curated by our concierge team — book through us for guaranteed best rates.",
+    "wellnessTitle": "External Wellness", "wellnessSubtitle": "Off-property spas and wellness experiences recommended by our concierge.",
+    "diningTitle": "Local Dining", "diningSubtitle": "Handpicked off-property restaurants recommended by our concierge team.",
+    "conciergePick": "Concierge Pick", "wellnessNote": "Need transport or a booking? Our concierge can arrange everything, including a hotel car to take you there.",
+    "diningNote": "Want a reservation? Ask our concierge — we'll handle the booking for you.", "book": "Book", "requestBooking": "Request Booking",
+    "bookingNote": "Our concierge will confirm availability and contact you in your room within 30 minutes.", "perPerson": "/ person"
+  },
+  "transport": { "title": "Transport", "capacity": "Up to {count} passengers" },
+  "login": {
+    "hero1": "Everything for your trip,", "hero2": "in ONE tap.",
+    "subtitle": "Sign in to set up the room. Guests use this device after check-in to dine, book spa, and explore.",
+    "staffId": "Staff ID", "staffIdExample": "e.g. 0421-FO", "password": "Password", "submit": "Login",
+    "hint": "Front Desk · For staff use only · Press Login to hand to guest", "togglePassword": "Toggle password"
+  },
+  "roomSelect": {
+    "title": "Welcome! Please enter your room number", "subtitle": "We'll personalise the experience for your stay.",
+    "label": "Room Number", "confirm": "Confirm", "hint": "Your room number can be found on your key card.", "delete": "Delete"
+  },
+  "staff": {
+    "kicker": "Cakrasoft Bridge · SPA Desk", "title": "Incoming SPA Orders", "subtitle": "Work orders from the concierge — confirm each into Cakrasoft.",
+    "empty": "No work orders yet — confirm a spa booking via the voice concierge.", "room": "Room {room}", "confirmed": "Confirmed", "pending": "Pending",
+    "date": "Date", "time": "Time", "party": "Guests", "partyValue": "{count} guests", "therapist": "Therapist", "notes": "Notes", "code": "Code",
+    "genderMale": "Male therapist", "genderFemale": "Female therapist", "genderAny": "No preference", "confirm": "Confirm in Cakrasoft"
+  },
+  "voice": {
+    "start": "Say \"Start\" to begin", "listening": "Listening…", "processing": "Processing…", "speaking": "Speaking…",
+    "ending": "Conversation ending in 10s…", "dismiss": "Dismiss", "startInput": "Start voice input", "stopRecording": "Stop recording", "interrupt": "Tap to interrupt"
   },
   "common": {
-    "loading": "Loading...",
-    "error": "Something went wrong",
-    "retry": "Retry",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "back": "Back",
-    "idr": "IDR"
+    "loading": "Loading...", "error": "Something went wrong", "retry": "Retry", "cancel": "Cancel", "confirm": "Confirm",
+    "back": "Back", "idr": "IDR", "date": "Date", "time": "Time", "close": "Close", "continue": "Tap to continue",
+    "openNow": "Open now", "closed": "Closed", "unavailable": "Unavailable", "clearFilter": "Clear filter", "viewMenu": "View menu"
   }
 }

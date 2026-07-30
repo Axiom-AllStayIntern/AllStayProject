@@ -2,28 +2,8 @@
 	import Header from '$lib/components/Header.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { cart, cartItemCount } from '$lib/stores/cart.js';
-	import { language } from '$lib/stores/language.js';
 	import { goto } from '$app/navigation';
-
-	$: lang = $language;
-
-	const T = {
-		en: {
-			title: 'My Cart', empty: 'Your cart is empty',
-			emptyDesc: 'Browse the menu and add what tempts you.',
-			browse: 'Browse menu', subtotal: 'Subtotal',
-			service: 'Service charge (10%)', total: 'Total',
-			confirm: 'Confirm Order'
-		},
-		zh: {
-			title: '我的购物车', empty: '购物车空空如也',
-			emptyDesc: '浏览菜单，把心动的加进来吧。',
-			browse: '浏览菜单', subtotal: '小计',
-			service: '服务费 (10%)', total: '总计',
-			confirm: '确认订单'
-		}
-	} as const;
-	$: t = T[lang as keyof typeof T] ?? T.en;
+	import { _ } from 'svelte-i18n';
 
 	function fmtIDR(n: number) {
 		return n.toLocaleString('en-US').replace(/,/g, ' ') + ' IDR';
@@ -49,11 +29,11 @@
 	<div class="body page-enter">
 		<main class="main scroll">
 			<div class="cart-hero">
-				<h2>{t.title}</h2>
+				<h2>{$_('cart.title')}</h2>
 				<div class="sub">
 					{$cartItemCount > 0
-						? (lang === 'zh' ? `共 ${$cartItemCount} 件 · 准备结算` : `${$cartItemCount} item${$cartItemCount === 1 ? '' : 's'} · ready to check out`)
-						: t.empty}
+						? $_($cartItemCount === 1 ? 'cart.readyOne' : 'cart.ready', { values: { count: $cartItemCount } })
+						: $_('cart.empty')}
 				</div>
 			</div>
 
@@ -65,10 +45,10 @@
 							<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>
 						</svg>
 					</div>
-					<h3>{t.empty}</h3>
-					<p>{t.emptyDesc}</p>
+					<h3>{$_('cart.empty')}</h3>
+					<p>{$_('cart.emptyDesc')}</p>
 					<button class="btn btn-primary" style="margin-top:20px; padding: 0 32px;" on:click={() => goto('/dining')}>
-						{t.browse}
+						{$_('cart.browse')}
 					</button>
 				</div>
 			{:else}
@@ -76,7 +56,7 @@
 					<div class="cart-group">
 						<div class="cart-group-title">
 							<span class="gd"></span>
-							{lang === 'zh' ? '餐饮' : 'Dining'}
+							{$_('cart.dining')}
 						</div>
 						{#each $cart.items as item (item.id)}
 							<div class="cart-row">
@@ -85,7 +65,7 @@
 									<div class="ct-name">{item.name}</div>
 									{#if item.specialInstructions}
 										<div class="ct-special">
-											{lang === 'zh' ? '备注' : 'Note'}: {item.specialInstructions}
+											{$_('cart.note')}: {item.specialInstructions}
 										</div>
 									{/if}
 									<div class="ct-controls">
@@ -97,7 +77,7 @@
 										<span class="ct-price">{fmtIDR(item.price * item.quantity)}</span>
 									</div>
 								</div>
-								<button class="ct-del" on:click={() => cart.removeItem(item.id)} aria-label="Remove">
+								<button class="ct-del" on:click={() => cart.removeItem(item.id)} aria-label={$_('cart.remove')}>
 									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
 										<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
 										<path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -112,13 +92,13 @@
 
 		{#if $cartItemCount > 0}
 			<div class="cart-summary">
-				<div class="sum-row"><span>{t.subtotal}</span><span>{fmtIDR($cart.subtotal)}</span></div>
-				<div class="sum-row"><span>{t.service}</span><span>{fmtIDR(service)}</span></div>
+				<div class="sum-row"><span>{$_('cart.subtotal')}</span><span>{fmtIDR($cart.subtotal)}</span></div>
+				<div class="sum-row"><span>{$_('cart.service')}</span><span>{fmtIDR(service)}</span></div>
 				<div class="sum-row total">
-					<span>{t.total}</span>
+					<span>{$_('cart.total')}</span>
 					<span class="val">{fmtIDR(grandTotal)}</span>
 				</div>
-				<button class="btn btn-primary btn-block" on:click={confirmOrder}>{t.confirm}</button>
+				<button class="btn btn-primary btn-block" on:click={confirmOrder}>{$_('cart.confirmOrder')}</button>
 			</div>
 		{/if}
 	</div>

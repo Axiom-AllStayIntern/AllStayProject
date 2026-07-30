@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatPrice } from '$lib/utils/format.js';
+	import { _ } from 'svelte-i18n';
 
 	interface Activity {
 		id: string;
@@ -79,8 +80,8 @@
 </script>
 
 <div class="activities">
-	<h1 class="page-title">Activities & Experiences</h1>
-	<p class="page-sub">Curated by our concierge team — book through us for guaranteed best rates.</p>
+	<h1 class="page-title">{$_('external.activitiesTitle')}</h1>
+	<p class="page-sub">{$_('external.activitiesSubtitle')}</p>
 
 	<div class="list">
 		{#each activities as act}
@@ -95,9 +96,9 @@
 					<div class="activity-card__footer">
 						<div class="meta">
 							<span class="meta-item">⏱ {act.duration}</span>
-							<span class="price">{formatPrice(act.price)} / person</span>
+							<span class="price">{formatPrice(act.price)} {$_('external.perPerson')}</span>
 						</div>
-						<button class="btn-book" on:click={() => selected = act}>Book</button>
+						<button class="btn-book" on:click={() => selected = act}>{$_('external.book')}</button>
 					</div>
 				</div>
 			</div>
@@ -112,11 +113,11 @@
 			<p class="modal-desc">{selected.description}</p>
 			<div class="modal-meta">
 				<span>⏱ {selected.duration}</span>
-				<span class="price">{formatPrice(selected.price)} / person</span>
+				<span class="price">{formatPrice(selected.price)} {$_('external.perPerson')}</span>
 			</div>
-			<p class="modal-note">Our concierge will confirm availability and contact you in your room within 30 minutes.</p>
-			<button class="btn-confirm" on:click={() => selected = null}>Request Booking</button>
-			<button class="btn-cancel" on:click={() => selected = null}>Cancel</button>
+			<p class="modal-note">{$_('external.bookingNote')}</p>
+			<button class="btn-confirm" on:click={() => selected = null}>{$_('external.requestBooking')}</button>
+			<button class="btn-cancel" on:click={() => selected = null}>{$_('common.cancel')}</button>
 		</div>
 	</div>
 {/if}
