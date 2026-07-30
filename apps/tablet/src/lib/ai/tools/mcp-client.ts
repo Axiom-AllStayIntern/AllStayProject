@@ -5,7 +5,7 @@ import { env } from '$env/dynamic/private';
 function getServerUrls(): Record<McpServerName, string> {
 	return {
 		dining: env.MCP_DINING_URL ?? 'http://localhost:3001',
-		spa: env.MCP_SPA_URL ?? 'http://localhost:3002',
+		spa: env.MCP_SPA_PUBLIC_URL ?? env.MCP_SPA_URL ?? 'http://localhost:3002',
 		restaurant: env.MCP_RESTAURANT_URL ?? 'http://localhost:3003',
 		transport: env.MCP_TRANSPORT_URL ?? 'http://localhost:3004'
 	};
