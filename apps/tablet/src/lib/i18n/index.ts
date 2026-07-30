@@ -1,11 +1,17 @@
-import { register, init } from 'svelte-i18n';
+import { addMessages, init } from 'svelte-i18n';
 import { DEFAULT_LANGUAGE } from './config.js';
+import en from '../locales/en.json';
+import zh from '../locales/zh.json';
+import id from '../locales/id.json';
 
 let initialized = false;
 
-register('en', () => import('../locales/en.json'));
-register('zh', () => import('../locales/zh.json'));
-register('id', () => import('../locales/id.json'));
+// SSR renders translated text synchronously. Registering these dictionaries
+// through lazy import() leaves the locale unset until its Promise resolves,
+// which makes the first server render fail as soon as $_(...) is evaluated.
+addMessages('en', en);
+addMessages('zh', zh);
+addMessages('id', id);
 
 export function setupI18n() {
 	if (initialized) return;
