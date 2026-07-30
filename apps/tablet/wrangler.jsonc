@@ -7,6 +7,12 @@
 	"vars": {
 		"MCP_SPA_PUBLIC_URL": "https://allstay-spa-mcp.wangchang0409.workers.dev"
 	},
+	"services": [
+		{
+			"binding": "SPA_MCP",
+			"service": "allstay-spa-mcp"
+		}
+	],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"

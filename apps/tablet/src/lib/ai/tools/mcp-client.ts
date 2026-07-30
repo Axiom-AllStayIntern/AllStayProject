@@ -1,6 +1,7 @@
 export type McpServerName = 'dining' | 'spa' | 'restaurant' | 'transport';
 
 import { env } from '$env/dynamic/private';
+import { getRequestEvent } from '$app/server';
 
 const DEFAULT_SPA_MCP_URL = 'https://allstay-spa-mcp.wangchang0409.workers.dev';
 
@@ -25,6 +26,10 @@ export interface McpToolResult {
 	error?: string;
 }
 
+interface SpaServiceBinding {
+	fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
 export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	const baseUrl = getServerUrls()[call.server].replace(/\/+$/, '');
 	const url = `${baseUrl}/api/mcp`;
@@ -40,7 +45,7 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 
 	let res: Response;
 	try {
-		res = await fetch(url, {
+		const init: RequestInit = {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -52,7 +57,14 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 					: {})
 			},
 			body: JSON.stringify(body)
-		});
+		};
+		let spaBinding: SpaServiceBinding | undefined;
+		try {
+			spaBinding = getRequestEvent().platform?.env.SPA_MCP;
+		} catch {
+			// No active SvelteKit request (for example, a local unit test).
+		}
+		res = call.server === 'spa' && spaBinding ? await spaBinding.fetch(url, init) : await fetch(url, init);
 	} catch {
 		return { success: false, error: `MCP server unreachable: ${call.server}` };
 	}
