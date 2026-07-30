@@ -2,10 +2,12 @@ export type McpServerName = 'dining' | 'spa' | 'restaurant' | 'transport';
 
 import { env } from '$env/dynamic/private';
 
+const DEFAULT_SPA_MCP_URL = 'https://allstay-spa-mcp.wangchang0409.workers.dev';
+
 function getServerUrls(): Record<McpServerName, string> {
 	return {
 		dining: env.MCP_DINING_URL ?? 'http://localhost:3001',
-		spa: env.MCP_SPA_PUBLIC_URL ?? env.MCP_SPA_URL ?? 'http://localhost:3002',
+		spa: env.MCP_SPA_PUBLIC_URL ?? env.MCP_SPA_URL ?? DEFAULT_SPA_MCP_URL,
 		restaurant: env.MCP_RESTAURANT_URL ?? 'http://localhost:3003',
 		transport: env.MCP_TRANSPORT_URL ?? 'http://localhost:3004'
 	};
@@ -56,7 +58,7 @@ export async function callMcpTool(call: McpToolCall): Promise<McpToolResult> {
 	}
 
 	if (!res.ok) {
-		return { success: false, error: `HTTP ${res.status}` };
+		return { success: false, error: `HTTP ${res.status} from ${new URL(url).host}` };
 	}
 
 	// StreamableHTTPServerTransport may answer as JSON or as an SSE stream
