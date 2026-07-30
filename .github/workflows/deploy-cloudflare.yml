@@ -85,8 +85,26 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.115.0"
           workingDirectory: apps/tablet
-          command: deploy --config wrangler.jsonc --keep-vars
+          command: deploy --config wrangler.jsonc
           secrets: |
             MCP_SPA_API_TOKEN
         env:
           MCP_SPA_API_TOKEN: ${{ secrets.SPA_MCP_SHARED_TOKEN }}
+
+      - name: Smoke test deployed Spa integration
+        shell: bash
+        run: |
+          tablet_url="https://allstay-tablet.wangchang0409.workers.dev"
+
+          curl --fail --silent --show-error \
+            --cookie-jar /tmp/allstay-tablet.cookies \
+            --header "Origin: ${tablet_url}" \
+            --header "Referer: ${tablet_url}/login" \
+            --data "staffId=deployment-smoke" \
+            --data "pin=1234" \
+            "${tablet_url}/login" > /dev/null
+
+          curl --fail --silent --show-error \
+            --cookie /tmp/allstay-tablet.cookies \
+            "${tablet_url}/api/spa?serviceId=balinese-massage&date=2026-08-01" \
+            | grep -q '"slots"'
